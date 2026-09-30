@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SiteHeader from "@/components/SiteHeader";
 import BottomNav from "@/components/BottomNav";
 import ActivityFeed from "@/components/ActivityFeed";
 import InboxThreads from "@/components/InboxThreads";
@@ -11,14 +12,11 @@ export default function Offers() {
 
   return (
     <div className="min-h-screen pb-16 bg-background">
-      <header className="sticky top-0 z-30 border-b-[4px] border-border bg-background">
-        <div className="max-w-md mx-auto flex items-center gap-3 px-4 h-14">
-          <span className="font-display text-xl uppercase text-left">Inbox</span>
-          {unread > 0 && (
-            <span className="ml-auto sticker bg-brand-red text-white px-2 py-0.5 text-xs">{unread} new</span>
-          )}
-        </div>
-      </header>
+      <SiteHeader
+        actions={unread > 0 && (
+          <span className="sticker bg-brand-red text-white px-2 py-0.5 text-xs">{unread} new</span>
+        )}
+      />
 
       <div className="max-w-md mx-auto p-4">
         <div className="flex border-[3px] border-border bg-card mb-4">

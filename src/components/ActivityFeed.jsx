@@ -8,24 +8,47 @@ import { notificationRoute } from "@/lib/notifications";
 /** The activity feed: everything that happened on this account, newest first. */
 export default function ActivityFeed() {
   const navigate = useNavigate();
-  const { user } = useCurrentUser();
+  const { user, loading: userLoading } = useCurrentUser();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
     let alive = true;
 
-    const load = async () => {
-      const { data: list } = await supabase.from('notifications').select('*')
-        .eq('recipient_id', user.id).order('created_at', { ascending: false }).limit(100);
-      if (!alive) return;
-      setItems(list || []);
+    if (userLoading) {
+      setLoading(true);
+      return () => { alive = false; };
+    }
+
+    if (!user) {
+      setItems([]);
+      setLoadError("");
       setLoading(false);
+      return () => { alive = false; };
+    }
+
+    setLoading(true);
+    setLoadError("");
+    const load = async () => {
+      try {
+        const { data: list, error } = await supabase.from('notifications').select('*')
+          .eq('recipient_id', user.id).order('created_at', { ascending: false }).limit(100);
+        if (error) throw error;
+        if (alive) setItems(list || []);
+      } catch (error) {
+        if (!alive) return;
+        console.error("Failed to load activity:", error);
+        setItems([]);
+        setLoadError("Couldn't load activity. Check your connection and try again.");
+      } finally {
+        if (alive) setLoading(false);
+      }
     };
 
-    load();
+    void load();
     const channel = supabase
       .channel(`activity:${user.id}`)
       .on('postgres_changes', {
@@ -37,7 +60,7 @@ export default function ActivityFeed() {
       alive = false;
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, userLoading, retryKey]);
 
   const open = (n) => {
     if (!n.read) {
@@ -71,10 +94,32 @@ export default function ActivityFeed() {
     setBusy(false);
   };
 
-  if (loading) {
+  if (userLoading || loading) {
     return (
       <div className="h-40 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mt-6 text-center">
+        <p className="font-display text-lg uppercase">Sign in to view activity</p>
+        <button onClick={() => navigate("/login")} className="acid-btn bg-brand-red text-white px-4 py-2 mt-3 text-xs">
+          Sign in
+        </button>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mt-6 text-center">
+        <p className="text-sm text-muted-foreground">{loadError}</p>
+        <button onClick={() => setRetryKey((key) => key + 1)} className="acid-btn bg-muted text-foreground px-4 py-2 mt-3 text-xs">
+          Retry
+        </button>
       </div>
     );
   }

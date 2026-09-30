@@ -11,12 +11,29 @@ import { formatPrice, timeAgo, toDate } from "@/lib/styld";
  */
 export default function InboxThreads() {
   const navigate = useNavigate();
-  const { user } = useCurrentUser();
+  const { user, loading: userLoading } = useCurrentUser();
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
+    let alive = true;
+
+    if (userLoading) {
+      setLoading(true);
+      return () => { alive = false; };
+    }
+
+    if (!user) {
+      setThreads([]);
+      setLoadError("");
+      setLoading(false);
+      return () => { alive = false; };
+    }
+
+    setLoading(true);
+    setLoadError("");
     (async () => {
       try {
         const [sentRes, receivedRes, asSellerRes, asBuyerRes, blocksRes, clearsRes] = await Promise.all([
@@ -27,6 +44,11 @@ export default function InboxThreads() {
           supabase.from('blocks').select('*').order('created_at', { ascending: false }).limit(200),
           supabase.from('chat_clears').select('*').eq('user_id', user.id),
         ]);
+        const queryError = [sentRes, receivedRes, asSellerRes, asBuyerRes, blocksRes, clearsRes]
+          .find((result) => result.error)?.error;
+        if (queryError) throw queryError;
+        if (!alive) return;
+
         const sent = sentRes.data || [];
         const received = receivedRes.data || [];
         const asSeller = asSellerRes.data || [];
@@ -77,17 +99,43 @@ export default function InboxThreads() {
 
         setThreads([...map.values()].sort((a, b) => toDate(b.at) - toDate(a.at)));
       } catch (e) {
+        if (!alive) return;
         console.error(e);
+        setThreads([]);
+        setLoadError("Couldn't load chats. Check your connection and try again.");
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
-  }, [user]);
+    return () => { alive = false; };
+  }, [user?.id, userLoading, retryKey]);
 
-  if (loading) {
+  if (userLoading || loading) {
     return (
       <div className="h-40 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mt-6 text-center">
+        <p className="font-display text-lg uppercase">Sign in to view chats</p>
+        <button onClick={() => navigate("/login")} className="acid-btn bg-brand-red text-white px-4 py-2 mt-3 text-xs">
+          Sign in
+        </button>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mt-6 text-center">
+        <p className="text-sm text-muted-foreground">{loadError}</p>
+        <button onClick={() => setRetryKey((key) => key + 1)} className="acid-btn bg-muted text-foreground px-4 py-2 mt-3 text-xs">
+          Retry
+        </button>
       </div>
     );
   }

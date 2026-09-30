@@ -46,7 +46,7 @@ export default function Watch() {
     <div className="h-screen w-full bg-black text-white flex overflow-hidden">
       {/* Left sidebar */}
       <aside className="hidden md:flex flex-col w-60 shrink-0 border-r-2 border-white/15 p-4 gap-1">
-        <Link to="/home" className="font-display text-2xl uppercase mb-6">STYLD</Link>
+        <Link to="/home" className="font-display text-2xl uppercase mb-6">Revex</Link>
         {NAV.map(({ to, icon: Icon, label }, i) => {
           const active = to === "/home" && location.pathname === "/watch" && label === "Home";
           return (

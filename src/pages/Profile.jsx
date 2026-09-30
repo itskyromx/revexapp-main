@@ -7,6 +7,7 @@ import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 import { displayName } from "@/lib/styld";
 import Avatar from "@/components/Avatar";
 import ItemCard from "@/components/ItemCard";
+import SiteHeader from "@/components/SiteHeader";
 import BottomNav from "@/components/BottomNav";
 import CreatorStats from "@/components/CreatorStats";
 import DraftsTab from "@/components/DraftsTab";
@@ -149,32 +150,33 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background pb-16">
-      <header className="sticky top-0 z-30 border-b-[4px] border-border bg-background">
-        <div className="max-w-md mx-auto flex items-center gap-3 px-4 h-14">
-          {userId &&
-            <button onClick={() => navigate(-1)} className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center"><ArrowLeft className="w-5 h-5" /></button>
-          }
-          <span className="font-display text-lg uppercase">Profile</span>
-          {isSelf && (
-            <div className="ml-auto flex items-center gap-2">
-              <button onClick={() => navigate("/orders")} aria-label="Orders"
-                className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center">
-                <Truck className="w-5 h-5" />
-              </button>
-              {me?.role === "admin" && (
-                <button onClick={() => navigate("/reports")} aria-label="Reports"
+      <SiteHeader
+        actions={(
+          <div className="flex items-center gap-2">
+            {userId && (
+              <button onClick={() => navigate(-1)} aria-label="Go back" className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center"><ArrowLeft className="w-5 h-5" /></button>
+            )}
+            {isSelf && (
+              <>
+                <button onClick={() => navigate("/orders")} aria-label="Orders"
                   className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center">
-                  <ShieldAlert className="w-5 h-5" />
+                  <Truck className="w-5 h-5" />
                 </button>
-              )}
-              <button onClick={() => navigate("/settings")} aria-label="Settings"
-                className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center">
-                <SettingsIcon className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+                {me?.role === "admin" && (
+                  <button onClick={() => navigate("/reports")} aria-label="Reports"
+                    className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center">
+                    <ShieldAlert className="w-5 h-5" />
+                  </button>
+                )}
+                <button onClick={() => navigate("/settings")} aria-label="Settings"
+                  className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center">
+                  <SettingsIcon className="w-5 h-5" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      />
 
       <div className="max-w-md mx-auto p-4">
         {isSelf && <ProfileWarningBanner userId={me?.id} />}

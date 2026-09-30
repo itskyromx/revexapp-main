@@ -23,7 +23,7 @@ export default function useUnreadNotifications() {
     load();
 
     const channel = supabase
-      .channel(`notifications:${user.id}`)
+      .channel(`notifications:${user.id}:${crypto.randomUUID()}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}`,
       }, () => load())

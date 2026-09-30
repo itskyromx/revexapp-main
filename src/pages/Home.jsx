@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
-import { Loader2, Search, Play, Flame, Sparkles } from "lucide-react";
+import { Loader2, Play, Flame, Sparkles } from "lucide-react";
 import { CATEGORY_LABELS } from "@/lib/styld";
 import { formatPrice } from "@/lib/styld";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
+import SiteHeader from "@/components/SiteHeader";
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS);
 
@@ -33,22 +34,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Top bar */}
-      <header className="sticky top-0 z-30 border-b-[4px] border-border bg-background">
-        <div className="max-w-6xl mx-auto flex items-center gap-4 px-4 h-14">
-          <Link to="/home" className="font-display text-xl uppercase tracking-tight">STYLD</Link>
-          <div className="hidden md:flex items-center gap-2 flex-1 max-w-md mx-auto border-2 border-border bg-background px-3 h-9">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <input placeholder="Search drops, brands, tags" className="bg-transparent flex-1 outline-none text-sm" />
-          </div>
-          <nav className="ml-auto flex items-center gap-1 text-sm font-heading uppercase">
-            <Link to="/watch" className="hidden md:inline px-3 py-1.5 hover:bg-black/10">Watch</Link>
-            <Link to="/upload" className="hidden md:inline px-3 py-1.5 hover:bg-black/10">Upload</Link>
-            <Link to="/offers" className="hidden md:inline px-3 py-1.5 hover:bg-black/10">Inbox</Link>
-            <Link to="/profile" className="border-2 border-border px-3 py-1.5 bg-brand-red text-white">Profile</Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-10">
         {loading ? (

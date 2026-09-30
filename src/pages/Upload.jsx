@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase, uploadPublicFile } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import SiteHeader from "@/components/SiteHeader";
 import BottomNav from "@/components/BottomNav";
 import { Loader2, Upload, X, Plus, Trash2, Image as ImageIcon, Sparkles, Video as VideoIcon } from "lucide-react";
 import { POST_CATEGORIES, POST_CATEGORY_LABELS, normalizeTags } from "@/lib/styld";
@@ -287,19 +288,17 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen pb-24 bg-background">
-      <header className="sticky top-0 z-30 border-b-[4px] border-border bg-background">
-        <div className="max-w-md mx-auto flex items-center justify-between px-4 h-14">
-          <span className="font-display text-xl uppercase">{draftId ? "Edit Post" : "New Post"}</span>
+      <SiteHeader
+        actions={(
           <div className="flex items-center gap-3">
             {saveState !== "idle" && (
               <span className="text-[10px] font-heading font-bold uppercase tracking-wide text-muted-foreground">
                 {saveState === "saving" ? "Saving…" : "Saved"}
               </span>
             )}
-            <button onClick={() => navigate("/")} className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center"><X className="w-5 h-5" /></button>
           </div>
-        </div>
-      </header>
+        )}
+      />
 
       <div className="max-w-md mx-auto p-4">
         {/* Stepper */}
