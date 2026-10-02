@@ -3,7 +3,7 @@ import { useTheme } from "next-themes";
 import { supabase, uploadPublicFile } from "@/api/supabaseClient";
 import { Check, Loader2, Moon, Sun, Upload } from "lucide-react";
 import Avatar from "@/components/Avatar";
-import { displayName } from "@/lib/styld";
+import { displayName } from "@/lib/revex";
 
 export default function ProfileSection({ user, setUser }) {
   const { theme, setTheme } = useTheme();

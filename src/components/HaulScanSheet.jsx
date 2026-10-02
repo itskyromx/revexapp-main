@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Loader2, Check, ChevronDown, Sparkles, Plus } from "lucide-react";
-import { CATEGORY_LABELS, CONDITION_LABELS, formatPrice } from "@/lib/styld";
+import { CATEGORY_LABELS, CONDITION_LABELS, formatPrice } from "@/lib/revex";
 import TagChips from "@/components/TagChips";
 
 const CATEGORIES = ["tops", "bottoms", "dresses", "outerwear", "shoes", "accessories", "other"];

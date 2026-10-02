@@ -3,16 +3,16 @@ export function notificationRoute(n) {
   const id = n?.target_id;
   switch (n?.target_type) {
     case "chat":
-      return id ? `/chat/${id}` : "/offers";
+      return id ? `/chat/${id}` : "/inbox";
     case "item":
-      return id ? `/item/${id}` : "/offers";
+      return id ? `/item/${id}` : "/inbox";
     case "post":
-      return id ? `/haul/${id}` : "/offers";
+      return id ? `/haul/${id}` : "/inbox";
     case "profile":
-      return id ? `/profile/${id}` : "/offers";
+      return id ? `/profile/${id}` : "/inbox";
     case "order":
       return "/orders";
     default:
-      return "/offers";
+      return "/inbox";
   }
 }

@@ -5,7 +5,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import SiteHeader from "@/components/SiteHeader";
 import BottomNav from "@/components/BottomNav";
 import { Loader2, Upload, X, Plus, Trash2, Image as ImageIcon, Sparkles, Video as VideoIcon } from "lucide-react";
-import { POST_CATEGORIES, POST_CATEGORY_LABELS, normalizeTags } from "@/lib/styld";
+import { POST_CATEGORIES, POST_CATEGORY_LABELS, normalizeTags } from "@/lib/revex";
 import TagChips from "@/components/TagChips";
 import CameraRecorder from "@/components/CameraRecorder";
 import { detectHaulItems } from "@/lib/aiSuggest";

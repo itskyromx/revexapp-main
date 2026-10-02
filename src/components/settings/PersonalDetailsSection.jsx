@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { Check, Loader2 } from "lucide-react";
-import { toDate } from "@/lib/styld";
+import { toDate } from "@/lib/revex";
 
 export default function PersonalDetailsSection({ user, setUser }) {
   const [phone, setPhone] = useState(user?.phone || "");

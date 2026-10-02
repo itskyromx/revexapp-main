@@ -4,7 +4,7 @@ import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ArrowLeft, UserPlus, UserCheck, Package, ShoppingBag, Settings as SettingsIcon, FileText, ShieldAlert, Truck, Ban, Lock, Bookmark } from "lucide-react";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
-import { displayName } from "@/lib/styld";
+import { displayName } from "@/lib/revex";
 import Avatar from "@/components/Avatar";
 import ItemCard from "@/components/ItemCard";
 import SiteHeader from "@/components/SiteHeader";

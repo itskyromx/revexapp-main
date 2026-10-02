@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { Loader2, Play, Flame, Sparkles } from "lucide-react";
-import { CATEGORY_LABELS } from "@/lib/styld";
-import { formatPrice } from "@/lib/styld";
+import { CATEGORY_LABELS } from "@/lib/revex";
+import { formatPrice } from "@/lib/revex";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 import SiteHeader from "@/components/SiteHeader";
 
@@ -137,8 +137,8 @@ export default function Home() {
 
       <footer className="border-t-[4px] border-border bg-background">
         <div className="max-w-6xl mx-auto px-4 py-6 flex flex-wrap items-center justify-between gap-3 text-xs font-heading uppercase text-muted-foreground">
-          <span className="font-display text-foreground">STYLD</span>
-          <span>© 2026 STYLD — secondhand, social.</span>
+          <span className="font-display text-foreground">Revex</span>
+          <span>© 2026 Revex — secondhand, social.</span>
         </div>
       </footer>
     </div>

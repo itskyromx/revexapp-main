@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import Avatar from "@/components/Avatar";
 import StarRating from "@/components/StarRating";
-import { timeAgo } from "@/lib/styld";
+import { timeAgo } from "@/lib/revex";
 
 /** Public trust summary on a seller's profile: average, count and latest reviews. */
 export default function SellerRatingSummary({ userId }) {

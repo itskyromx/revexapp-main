@@ -1,6 +1,6 @@
 import { Bookmark } from "lucide-react";
-import { CONDITION_LABELS } from "@/lib/styld";
-import { formatPrice } from "@/lib/styld";
+import { CONDITION_LABELS } from "@/lib/revex";
+import { formatPrice } from "@/lib/revex";
 
 export default function ItemCard({ item, onClick, saved = false, onToggleSave }) {
   return (
@@ -13,7 +13,7 @@ export default function ItemCard({ item, onClick, saved = false, onToggleSave })
           {item.image_url ? (
             <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full grid place-items-center text-muted-foreground font-display text-3xl">STYLD</div>
+            <div className="w-full h-full grid place-items-center text-muted-foreground font-display text-3xl">REVEX</div>
           )}
           {item.status !== "available" && (
             <span className="absolute top-1.5 left-1.5 sticker bg-black text-white text-[9px] px-2 py-0.5 uppercase">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
-import { CURATED_TAGS, CURATED_BRANDS, normalizeTags } from "@/lib/styld";
+import { CURATED_TAGS, CURATED_BRANDS, normalizeTags } from "@/lib/revex";
 import { Loader2, Check, Plus } from "lucide-react";
 
 export default function Onboarding() {

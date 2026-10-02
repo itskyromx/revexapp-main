@@ -1,6 +1,6 @@
 import { MessageCircle, Tag, Check, ShoppingBag, Package, UserPlus, Heart, X } from "lucide-react";
 import Avatar from "@/components/Avatar";
-import { timeAgo } from "@/lib/styld";
+import { timeAgo } from "@/lib/revex";
 
 const ICONS = {
   message: MessageCircle,

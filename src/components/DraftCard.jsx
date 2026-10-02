@@ -1,5 +1,5 @@
 import { Trash2, Video as VideoIcon } from "lucide-react";
-import { timeAgo } from "@/lib/styld";
+import { timeAgo } from "@/lib/revex";
 
 export default function DraftCard({ draft, onOpen, onDelete }) {
   const media = draft.media || [];

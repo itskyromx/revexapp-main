@@ -11,7 +11,7 @@ import ReportUserSheet from "@/components/ReportUserSheet";
 import MessageBubble from "@/components/MessageBubble";
 import MessageActionSheet from "@/components/MessageActionSheet";
 import { toast } from "@/components/ui/use-toast";
-import { formatPrice, toDate, displayName, timeAgo } from "@/lib/styld";
+import { formatPrice, toDate, displayName, timeAgo } from "@/lib/revex";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -204,7 +204,7 @@ export default function Chat() {
     setBusyAction(true);
     try {
       await supabase.functions.invoke("clearChat", { body: { userId } });
-      navigate("/offers");
+      navigate("/inbox");
     } catch (e) {
       console.error(e);
     } finally {
@@ -218,7 +218,7 @@ export default function Chat() {
     setBusyAction(true);
     try {
       await supabase.functions.invoke("blockUser", { body: { userId } });
-      navigate("/offers");
+      navigate("/inbox");
     } catch (e) {
       console.error(e);
     } finally {

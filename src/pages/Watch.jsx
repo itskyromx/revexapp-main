@@ -9,7 +9,7 @@ const NAV = [
   { to: "/home", icon: Compass, label: "Explore" },
   { to: "/home", icon: Users, label: "Following" },
   { to: "/upload", icon: Plus, label: "Upload" },
-  { to: "/offers", icon: Inbox, label: "Inbox" },
+  { to: "/inbox", icon: Inbox, label: "Inbox" },
   { to: "/profile", icon: User, label: "Profile" },
 ];
 

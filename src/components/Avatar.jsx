@@ -1,4 +1,4 @@
-import { initials, avatarColor } from "@/lib/styld";
+import { initials, avatarColor } from "@/lib/revex";
 
 export default function Avatar({ name, src, size = 40, ring = false, className = "" }) {
   const dim = { width: size, height: size };

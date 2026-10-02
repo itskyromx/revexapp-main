@@ -3,7 +3,7 @@ import { supabase } from "@/api/supabaseClient";
 import { Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import TagChips from "@/components/TagChips";
-import { normalizeTags } from "@/lib/styld";
+import { normalizeTags } from "@/lib/revex";
 
 /** Creator-side editing of a post's title, caption and tags. Media is left as is. */
 export default function PostEditSheet({ post, onClose, onSaved }) {

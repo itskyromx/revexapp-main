@@ -8,7 +8,7 @@ import OfferSheet from "@/components/OfferSheet";
 import CheckoutSheet from "@/components/CheckoutSheet";
 import TryOnVideo from "@/components/TryOnVideo";
 import TagChips from "@/components/TagChips";
-import { formatPrice, CONDITION_LABELS, normalizeTags } from "@/lib/styld";
+import { formatPrice, CONDITION_LABELS, normalizeTags } from "@/lib/revex";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
 import BottomNav from "@/components/BottomNav";
@@ -152,7 +152,7 @@ export default function ItemDetail() {
       recipientId: counterFor.buyer_id,
       title: 'Counter-offer',
       content: `${item.seller_name || "The seller"} offered you ${formatPrice(amount)} on ${item.title}`,
-      actionUrl: '/offers',
+      actionUrl: '/inbox',
       type: 'offer',
       targetType: 'item',
       targetId: item.id,

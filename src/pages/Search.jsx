@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { Search as SearchIcon, Flame, X, TrendingUp } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { CATEGORY_LABELS } from "@/lib/styld";
-import { formatPrice } from "@/lib/styld";
+import { CATEGORY_LABELS } from "@/lib/revex";
+import { formatPrice } from "@/lib/revex";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS);

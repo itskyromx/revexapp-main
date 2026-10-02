@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Tag } from "lucide-react";
-import { formatPrice } from "@/lib/styld";
+import { formatPrice } from "@/lib/revex";
 
 /** Sends an offer. Used by buyers bidding on an item and sellers countering one. */
 export default function OfferSheet({ item, title = "Make an Offer", recipient, defaultAmount, onClose, onSubmitted }) {

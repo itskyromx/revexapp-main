@@ -35,7 +35,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
   const [handoff, setHandoff] = useState("");
 
   const url = `${window.location.origin}/haul/${post.id}`;
-  const title = post.haul_title || "Check out this haul on Styld";
+  const title = post.haul_title || "Check out this haul on Revex";
   const thumb = post.image_urls?.[0] || "";
 
   const bumpShare = () => {
@@ -146,7 +146,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
                   <p className="font-display uppercase text-sm leading-tight truncate">
                     {post.haul_title || "Untitled post"}
                   </p>
-                  <p className="text-xs text-white/60 truncate">@{post.creator_name?.split(" ")[0]?.toLowerCase() || "styld"}</p>
+                  <p className="text-xs text-white/60 truncate">@{post.creator_name?.split(" ")[0]?.toLowerCase() || "revexuser"}</p>
                 </div>
               </div>
 

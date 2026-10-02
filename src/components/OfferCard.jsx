@@ -1,5 +1,5 @@
 import { Tag, Check, X, Loader2, ShoppingBag } from "lucide-react";
-import { formatPrice } from "@/lib/styld";
+import { formatPrice } from "@/lib/revex";
 
 /** An offer rendered inside a conversation — item, amount, status and the
  *  action the current viewer is allowed to take on it. */

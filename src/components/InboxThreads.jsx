@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Avatar from "@/components/Avatar";
-import { formatPrice, timeAgo, toDate } from "@/lib/styld";
+import { formatPrice, timeAgo, toDate } from "@/lib/revex";
 
 /**
  * One conversation thread per person, derived from the messages and offers

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { CURATED_TAGS, normalizeTags } from "@/lib/styld";
+import { CURATED_TAGS, normalizeTags } from "@/lib/revex";
 
 // Hybrid tag picker: curated toggle chips + free-text custom tags.
 export default function TagChips({ value = [], onChange }) {

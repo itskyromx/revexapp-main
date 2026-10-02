@@ -107,10 +107,10 @@ export default function Reports() {
           title: "Your haul was removed",
           content:
             `Hi ${report.creator_name || "there"},\n\n` +
-            `Your haul "${report.haul_title || "Untitled haul"}" has been removed from Styld after a review by our team. ` +
+            `Your haul "${report.haul_title || "Untitled haul"}" has been removed from Revex after a review by our team. ` +
             `It was found to break our rules — ${rule}.\n\n` +
             `Repeated violations can lead to your account being restricted, so please review our community guidelines before posting again.\n\n` +
-            `— The Styld team`,
+            `— The Revex team`,
         }}).catch(() => {});
       }
 

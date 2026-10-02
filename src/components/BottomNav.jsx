@@ -8,7 +8,7 @@ export default function BottomNav({ overlay = false }) {
     { to: "/", icon: Home, label: "Home", end: true },
     { to: "/search", icon: Search, label: "Search" },
     { to: "/upload", icon: Plus, label: "Sell", center: true },
-    { to: "/offers", icon: Inbox, label: "Inbox", badge: unread },
+    { to: "/inbox", icon: Inbox, label: "Inbox", badge: unread },
     { to: "/profile", icon: User, label: "Profile" },
   ];
 

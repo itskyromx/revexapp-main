@@ -1,4 +1,4 @@
-// Styld shared helpers + constants
+// Revex shared helpers + constants
 
 export const CONDITION_LABELS = {
   new_with_tags: "NWT",
@@ -77,19 +77,19 @@ export function timeAgo(dateStr) {
 }
 
 export function loadLiked() {
-  try { return new Set(JSON.parse(localStorage.getItem("styld_liked") || "[]")); }
+  try { return new Set(JSON.parse(localStorage.getItem("revex_liked") || "[]")); }
   catch { return new Set(); }
 }
 export function saveLiked(set) {
-  try { localStorage.setItem("styld_liked", JSON.stringify([...set])); } catch {}
+  try { localStorage.setItem("revex_liked", JSON.stringify([...set])); } catch {}
 }
 
 export function loadSaved() {
-  try { return new Set(JSON.parse(localStorage.getItem("styld_saved") || "[]")); }
+  try { return new Set(JSON.parse(localStorage.getItem("revex_saved") || "[]")); }
   catch { return new Set(); }
 }
 export function saveSaved(set) {
-  try { localStorage.setItem("styld_saved", JSON.stringify([...set])); } catch {}
+  try { localStorage.setItem("revex_saved", JSON.stringify([...set])); } catch {}
 }
 
 // Curated aesthetic tags for item tagging (hybrid system)

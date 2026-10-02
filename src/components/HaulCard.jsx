@@ -4,7 +4,7 @@ import { Heart, Share2, MessageCircle, Bookmark, ChevronLeft, ChevronRight, More
 import { supabase } from "@/api/supabaseClient";
 import Avatar from "@/components/Avatar";
 import ShareSheet from "@/components/ShareSheet";
-import { timeAgo, loadLiked, saveLiked } from "@/lib/styld";
+import { timeAgo, loadLiked, saveLiked } from "@/lib/revex";
 import { useAuth } from "@/lib/AuthContext";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
@@ -178,7 +178,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
             </button>
             <div className="flex flex-col">
               <button onClick={() => onOpenProfile?.(post.created_by_id)} className="font-display text-sm text-white drop-shadow leading-none">
-                @{post.creator_name?.split(" ")[0]?.toLowerCase() || "styld"}
+                @{post.creator_name?.split(" ")[0]?.toLowerCase() || "revexuser"}
               </button>
               <span className="text-[10px] text-white/70 font-heading">{timeAgo(post.created_at)} ago</span>
             </div>

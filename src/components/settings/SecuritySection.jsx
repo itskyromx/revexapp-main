@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { Check, Loader2, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { toDate } from "@/lib/styld";
+import { toDate } from "@/lib/revex";
 import DeleteAccountCard from "@/components/settings/DeleteAccountCard";
 
 export default function SecuritySection({ user }) {
