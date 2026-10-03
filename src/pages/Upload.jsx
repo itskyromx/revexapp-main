@@ -311,11 +311,6 @@ export default function UploadPage() {
         {step === 1 && (
           <div className="space-y-4">
             <label className="acid-label">1. Add photos / video of your haul</label>
-            {isMobile && (
-              <button onClick={() => setShowCamera(true)} className="acid-btn bg-brand-red text-white w-full">
-                <VideoIcon className="w-5 h-5" /> Record video
-              </button>
-            )}
             <label className="acid-card p-6 flex flex-col items-center justify-center gap-2 cursor-pointer border-dashed">
               {busy ? <Loader2 className="w-8 h-8 animate-spin" /> : <Upload className="w-8 h-8" />}
               <span className="font-heading font-bold uppercase text-sm">{isMobile ? "Or upload from device" : "Tap to upload"}</span>
