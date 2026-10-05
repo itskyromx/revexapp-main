@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/api/supabaseClient";
 import { X, Loader2, Users } from "lucide-react";
 import Avatar from "@/components/Avatar";
+import { loadProfilesById, profileLabel } from "@/lib/profileData";
 
 // Bottom sheet listing the people behind a follower / following count.
 export default function FollowListSheet({ title, ids = [], names = {}, emptyText, onClose }) {
@@ -12,16 +12,13 @@ export default function FollowListSheet({ title, ids = [], names = {}, emptyText
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: users } = ids.length
-        ? await supabase.from('profiles').select('*').in('id', ids)
-        : { data: [] };
+      const profiles = await loadProfilesById(ids);
       if (cancelled) return;
-      const byId = Object.fromEntries((users || []).map((u) => [u.id, u]));
       setRows(
         ids.map((id) => ({
           id,
-          name: byId[id]?.full_name || byId[id]?.email || names[id] || "Creator",
-          avatar: byId[id]?.avatar,
+          name: profileLabel(profiles[id], names[id] && !names[id].includes("@") ? names[id] : "Creator"),
+          avatar: profiles[id]?.avatar,
         }))
       );
     })();

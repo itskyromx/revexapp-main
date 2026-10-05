@@ -4,7 +4,7 @@ import { supabase, uploadPublicFile } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import SiteHeader from "@/components/SiteHeader";
 import BottomNav from "@/components/BottomNav";
-import { Loader2, Upload, X, Plus, Trash2, Image as ImageIcon, Sparkles, Video as VideoIcon } from "lucide-react";
+import { Loader2, Upload, X, Plus, Trash2, Image as ImageIcon, Sparkles } from "lucide-react";
 import { POST_CATEGORIES, POST_CATEGORY_LABELS, normalizeTags } from "@/lib/revex";
 import TagChips from "@/components/TagChips";
 import CameraRecorder from "@/components/CameraRecorder";
@@ -13,7 +13,7 @@ import HaulScanSheet from "@/components/HaulScanSheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const blankItem = () => ({
-  title: "", brand: "", size: "", condition: "good", price: "", shipping_price: "3",
+  title: "", brand: "", size: "", condition: "good", price: "", shipping_price: "",
   image_url: "", category: "tops", try_on_video_url: "", tags: []
 });
 
@@ -232,12 +232,13 @@ export default function UploadPage() {
     if (!haulTitle.trim() || media.length === 0) return;
     setBusy(true);
     try {
-      const name = user?.display_name || user?.full_name || user?.email || "Creator";
+      const name = user?.display_name || user?.full_name || "Creator";
       const video = media.find((m) => m.type === "video");
       const images = media.filter((m) => m.type === "image").map((m) => m.url);
       const { data: post, error: postError } = await supabase.from('posts').insert({
+        created_by_id: user.id,
         creator_name: name,
-        creator_avatar: "",
+        creator_avatar: user.avatar || "",
         video_url: video?.url || "",
         image_urls: images,
         haul_title: haulTitle.trim(),
@@ -253,9 +254,10 @@ export default function UploadPage() {
       for (const it of items) {
         if (!it.title.trim() || !it.price) continue;
         const { data: rec, error: itemError } = await supabase.from('items').insert({
+          created_by_id: user.id,
           post_id: post.id,
           seller_name: name,
-          seller_avatar: "",
+          seller_avatar: user.avatar || "",
           title: it.title.trim(),
           brand: it.brand.trim(),
           size: it.size.trim(),
@@ -310,12 +312,12 @@ export default function UploadPage() {
 
         {step === 1 && (
           <div className="space-y-4">
-            <label className="acid-label">1. Add photos / video of your haul</label>
+            <label className="acid-label">1. Add photos of your haul</label>
             <label className="acid-card p-6 flex flex-col items-center justify-center gap-2 cursor-pointer border-dashed">
               {busy ? <Loader2 className="w-8 h-8 animate-spin" /> : <Upload className="w-8 h-8" />}
-              <span className="font-heading font-bold uppercase text-sm">{isMobile ? "Or upload from device" : "Tap to upload"}</span>
-              <span className="text-xs text-muted-foreground">Video or photos — show how it fits!</span>
-              <input type="file" accept="image/*,video/*" multiple className="hidden"
+              <span className="font-heading font-bold uppercase text-sm">{isMobile ? "upload from device" : "Tap to upload"}</span>
+              <span className="text-xs text-muted-foreground">Show how it fits!</span>
+              <input type="file" accept="image/*" multiple className="hidden"
                 onChange={(e) => e.target.files && onPickFiles(e.target.files, "media")} />
             </label>
             {media.length > 0 && (

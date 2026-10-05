@@ -6,7 +6,7 @@ import InboxThreads from "@/components/InboxThreads";
 import useUnreadNotifications from "@/hooks/useUnreadNotifications";
 
 /** Inbox — activity alerts first, with the chat threads one tap away. */
-export default function Offers() {
+export default function Inbox() {
   const [tab, setTab] = useState("activity");
   const unread = useUnreadNotifications();
 

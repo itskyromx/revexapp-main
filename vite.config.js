@@ -4,11 +4,11 @@ import { defineConfig } from "vite";
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
-export default defineConfig({
-  plugins: [react(), cloudflare()],
+export default defineConfig(({ command }) => ({
+  plugins: [react(), ...(command === "build" ? [cloudflare()] : [])],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-});
+}));

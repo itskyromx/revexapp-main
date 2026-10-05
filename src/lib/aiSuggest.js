@@ -1,5 +1,6 @@
 import { supabase, callFunction } from "@/api/supabaseClient";
 import { captureFrames, dataUrlToFile } from "@/lib/videoFrames";
+import { createUniqueId } from "@/lib/uniqueId";
 
 // Analyze a haul clip and return an array of detected garments with suggested
 // metadata + a brand/condition-based resale price estimate.
@@ -12,7 +13,7 @@ export async function detectHaulItems(videoUrl) {
   const fileUrls = [];
   for (let i = 0; i < frames.length; i++) {
     const file = await dataUrlToFile(frames[i], `frame-${i}.jpg`);
-    const path = `haul-frames/${crypto.randomUUID()}-${file.name}`;
+    const path = `haul-frames/${createUniqueId()}-${file.name}`;
     const { error } = await supabase.storage.from('media').upload(path, file);
     if (error) throw error;
     const { data: pub } = supabase.storage.from('media').getPublicUrl(path);

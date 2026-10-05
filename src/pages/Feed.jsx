@@ -4,6 +4,7 @@ import { supabase } from "@/api/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import HaulCard from "@/components/HaulCard";
 import { Loader2 } from "lucide-react";
+import { enrichPostCreators } from "@/lib/profileData";
 
 // Kept for the life of the app session: coming back to the feed reuses the posts
 // already loaded instead of refetching and reordering them.
@@ -14,6 +15,7 @@ export default function Feed() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState(feedCache?.posts || []);
   const [loading, setLoading] = useState(!feedCache);
+  const [feedError, setFeedError] = useState("");
   const [cursor, setCursor] = useState(feedCache?.cursor || null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [chrome, setChrome] = useState(true);
@@ -31,14 +33,17 @@ export default function Feed() {
 
   const fetchFeed = useCallback(async () => {
     setLoading(true);
+    setFeedError("");
     try {
       const res = await supabase.functions.invoke("getFeed", { body: { mode: "fyp" } });
-      const next = res.data.posts || [];
+      if (res.error) throw res.error;
+      const next = await enrichPostCreators(res.data?.posts || []);
       feedCache = { posts: next, cursor: res.data.nextCursor };
       setPosts(next);
       setCursor(res.data.nextCursor);
     } catch (e) {
       console.error(e);
+      setFeedError("We couldn't load the feed. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -71,7 +76,7 @@ export default function Feed() {
     setLoadingMore(true);
     try {
       const res = await supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } });
-      const more = res.data.posts || [];
+      const more = await enrichPostCreators(res.data?.posts || []);
       setPosts((p) => {
         const merged = [...p, ...more];
         feedCache = { posts: merged, cursor: res.data.nextCursor };
@@ -86,6 +91,16 @@ export default function Feed() {
       {loading ? (
         <div className="h-full flex items-center justify-center">
           <Loader2 className="w-9 h-9 animate-spin text-white" strokeWidth={3} />
+        </div>
+      ) : feedError ? (
+        <div className="h-full flex flex-col items-center justify-center gap-3 px-8 text-center">
+          <p className="text-sm text-white/80">{feedError}</p>
+          <button
+            onClick={fetchFeed}
+            className="px-4 py-2 border-2 border-white text-white text-xs font-heading uppercase"
+          >
+            Try again
+          </button>
         </div>
       ) : posts.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center px-8 text-center">

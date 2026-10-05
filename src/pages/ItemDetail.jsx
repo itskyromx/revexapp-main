@@ -12,6 +12,7 @@ import { formatPrice, CONDITION_LABELS, normalizeTags } from "@/lib/revex";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
 import BottomNav from "@/components/BottomNav";
+import { createUniqueId } from "@/lib/uniqueId";
 
 export default function ItemDetail() {
   const { itemId } = useParams();
@@ -73,7 +74,7 @@ export default function ItemDetail() {
     if (!file) return;
     setBusyVideo(true);
     try {
-      const path = `try-on/${crypto.randomUUID()}-${file.name}`;
+      const path = `try-on/${createUniqueId()}-${file.name}`;
       const { error } = await supabase.storage.from('media').upload(path, file);
       if (error) throw error;
       const { data: pub } = supabase.storage.from('media').getPublicUrl(path);

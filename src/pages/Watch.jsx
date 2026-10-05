@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { Home, Compass, Users, Plus, User, Inbox, Loader2 } from "lucide-react";
 import HaulCard from "@/components/HaulCard";
+import { enrichPostCreators } from "@/lib/profileData";
 
 const NAV = [
   { to: "/home", icon: Home, label: "Home" },
@@ -26,7 +27,7 @@ export default function Watch() {
     setCursor(null);
     try {
       const res = await supabase.functions.invoke("getFeed", { body: { mode: "fyp" } });
-      setPosts(res.data.posts || []);
+      setPosts(await enrichPostCreators(res.data?.posts || []));
       setCursor(res.data.nextCursor);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, []);
@@ -37,7 +38,8 @@ export default function Watch() {
     if (!cursor) return;
     try {
       const res = await supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } });
-      setPosts((p) => [...p, ...(res.data.posts || [])]);
+      const more = await enrichPostCreators(res.data?.posts || []);
+      setPosts((p) => [...p, ...more]);
       setCursor(res.data.nextCursor);
     } catch {}
   };

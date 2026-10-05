@@ -4,6 +4,7 @@ import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import ActivityRow from "@/components/ActivityRow";
 import { notificationRoute } from "@/lib/notifications";
+import { loadProfilesById, profileLabel } from "@/lib/profileData";
 
 /** The activity feed: everything that happened on this account, newest first. */
 export default function ActivityFeed() {
@@ -37,7 +38,20 @@ export default function ActivityFeed() {
         const { data: list, error } = await supabase.from('notifications').select('*')
           .eq('recipient_id', user.id).order('created_at', { ascending: false }).limit(100);
         if (error) throw error;
-        if (alive) setItems(list || []);
+        const profiles = await loadProfilesById((list || []).map((item) => item.actor_id));
+        if (alive) {
+          setItems((list || []).map((item) => {
+            const profile = profiles[item.actor_id];
+            const fallbackName = item.actor_name && !item.actor_name.includes("@")
+              ? item.actor_name
+              : "Creator";
+            return {
+              ...item,
+              actor_name: profileLabel(profile, fallbackName),
+              actor_avatar: profile?.avatar || item.actor_avatar || "",
+            };
+          }));
+        }
       } catch (error) {
         if (!alive) return;
         console.error("Failed to load activity:", error);

@@ -4,6 +4,7 @@ import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Avatar from "@/components/Avatar";
 import { formatPrice, timeAgo, toDate } from "@/lib/revex";
+import { loadProfilesById, profileLabel } from "@/lib/profileData";
 
 /**
  * One conversation thread per person, derived from the messages and offers
@@ -97,7 +98,17 @@ export default function InboxThreads() {
           touch(otherId, name, o.created_at, `Offer ${formatPrice(o.amount)} · ${o.item_title}`, true);
         });
 
-        setThreads([...map.values()].sort((a, b) => toDate(b.at) - toDate(a.at)));
+        const profiles = await loadProfilesById([...map.keys()]);
+        const resolvedThreads = [...map.values()].map((thread) => {
+          const profile = profiles[thread.id];
+          const fallbackName = thread.name && !thread.name.includes("@") ? thread.name : "User";
+          return {
+            ...thread,
+            name: profileLabel(profile, fallbackName),
+            avatar: profile?.avatar || "",
+          };
+        });
+        setThreads(resolvedThreads.sort((a, b) => toDate(b.at) - toDate(a.at)));
       } catch (e) {
         if (!alive) return;
         console.error(e);
@@ -158,7 +169,7 @@ export default function InboxThreads() {
           key={t.id}
           onClick={() => navigate(`/chat/${t.id}`)}
           className="acid-card w-full p-3 flex items-center gap-3 text-left">
-          <Avatar name={t.name} size={44} />
+          <Avatar name={t.name} src={t.avatar} size={44} />
           <div className="min-w-0 flex-1">
             <p className="font-heading font-bold text-sm truncate">{t.name || "User"}</p>
             <p className={`text-xs truncate ${t.isOffer ? "text-brand-red font-heading" : "text-muted-foreground"}`}>

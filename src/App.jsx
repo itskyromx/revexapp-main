@@ -14,7 +14,7 @@ import Feed from '@/pages/Feed';
 import UploadPage from '@/pages/Upload';
 import ItemDetail from '@/pages/ItemDetail';
 import Profile from '@/pages/Profile';
-import Offers from '@/pages/Offers';
+import Inbox from '@/pages/Inbox';
 import Chat from '@/pages/Chat';
 import Home from '@/pages/Home';
 import Watch from '@/pages/Watch';
@@ -70,7 +70,7 @@ const AuthenticatedApp = () => {
       <Route path="/profile/:userId" element={<Profile />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/item/:itemId" element={<ItemDetail />} />
-      <Route path="/inbox" element={<Offers />} />
+      <Route path="/inbox" element={<Inbox />} />
       <Route path="/chat/:userId" element={<Chat />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>

@@ -23,7 +23,7 @@ import SellerRatingSummary from "@/components/SellerRatingSummary";
 export default function Profile() {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const { user: me } = useCurrentUser();
+  const { user: me, loading: userLoading } = useCurrentUser();
   const targetId = userId || me?.id;
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -145,6 +145,23 @@ export default function Profile() {
   const isSelf = me && targetId === me.id;
   const name = displayName(profile) || "Creator";
   const locked = Boolean(profile?.private_account) && !isSelf && !isFollowing;
+
+  if (userLoading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
+
+  if (!me && !userId) {
+    return (
+      <div className="min-h-screen bg-background pb-16">
+        <SiteHeader />
+        <div className="max-w-md mx-auto p-4 mt-6 text-center">
+          <p className="font-display text-lg uppercase">Sign in to view your profile</p>
+          <button onClick={() => navigate("/login")} className="acid-btn bg-brand-red text-white px-4 py-2 mt-3 text-xs">
+            Sign in
+          </button>
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
   if (loading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
 

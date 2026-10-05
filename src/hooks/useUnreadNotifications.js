@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { createUniqueId } from "@/lib/uniqueId";
 
 /** Unread alert count for the Inbox badge, kept fresh by Supabase Realtime. */
 export default function useUnreadNotifications() {
@@ -23,7 +24,7 @@ export default function useUnreadNotifications() {
     load();
 
     const channel = supabase
-      .channel(`notifications:${user.id}:${crypto.randomUUID()}`)
+      .channel(`notifications:${user.id}:${createUniqueId()}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}`,
       }, () => load())

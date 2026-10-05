@@ -1,11 +1,25 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "revexapp-main",
+  "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "observability": {
     "enabled": true
   },
   "assets": {
     "not_found_handling": "single-page-application"
-  }
+  },
+
+  // Add nodejs_compat compatibility flag to support common database drivers
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+
+  // Add this to your wrangler.jsonc
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "34beaf85cc854f2b92e6dffa395d8854",
+    }
+  ]
 }
