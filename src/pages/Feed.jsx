@@ -4,6 +4,7 @@ import { supabase } from "@/api/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import HaulCard from "@/components/HaulCard";
 import { Loader2 } from "lucide-react";
+import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 import { enrichPostCreators } from "@/lib/profileData";
 
 // Kept for the life of the app session: coming back to the feed reuses the posts
@@ -35,9 +36,12 @@ export default function Feed() {
     setLoading(true);
     setFeedError("");
     try {
-      const res = await supabase.functions.invoke("getFeed", { body: { mode: "fyp" } });
+      const [res, blockedIds] = await Promise.all([
+        supabase.functions.invoke("getFeed", { body: { mode: "fyp" } }),
+        getBlockedIds(),
+      ]);
       if (res.error) throw res.error;
-      const next = await enrichPostCreators(res.data?.posts || []);
+      const next = await enrichPostCreators(hideBlocked(res.data?.posts || [], blockedIds));
       feedCache = { posts: next, cursor: res.data.nextCursor };
       setPosts(next);
       setCursor(res.data.nextCursor);
@@ -52,6 +56,15 @@ export default function Feed() {
   useEffect(() => {
     if (!isDesktop && !feedCache) fetchFeed();
   }, [fetchFeed, isDesktop]);
+
+  useEffect(() => {
+    const refresh = () => {
+      feedCache = null;
+      fetchFeed();
+    };
+    window.addEventListener('revex:block-changed', refresh);
+    return () => window.removeEventListener('revex:block-changed', refresh);
+  }, [fetchFeed]);
 
   // Land back on the post the viewer was watching — before first paint.
   useLayoutEffect(() => {
@@ -75,8 +88,11 @@ export default function Feed() {
     if (!cursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const res = await supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } });
-      const more = await enrichPostCreators(res.data?.posts || []);
+      const [res, blockedIds] = await Promise.all([
+        supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } }),
+        getBlockedIds(),
+      ]);
+      const more = await enrichPostCreators(hideBlocked(res.data?.posts || [], blockedIds));
       setPosts((p) => {
         const merged = [...p, ...more];
         feedCache = { posts: merged, cursor: res.data.nextCursor };

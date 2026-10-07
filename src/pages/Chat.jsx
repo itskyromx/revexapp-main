@@ -12,6 +12,7 @@ import MessageBubble from "@/components/MessageBubble";
 import MessageActionSheet from "@/components/MessageActionSheet";
 import { toast } from "@/components/ui/use-toast";
 import { formatPrice, toDate, displayName, timeAgo } from "@/lib/revex";
+import { clearChatHistory, getBlockRelationship, setBlockRelationship } from "@/lib/blocks";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -31,6 +32,7 @@ export default function Chat() {
   const [offers, setOffers] = useState([]);
   const [paidItemIds, setPaidItemIds] = useState([]);
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busyOffer, setBusyOffer] = useState("");
   const [checkoutItem, setCheckoutItem] = useState(null);
@@ -44,6 +46,7 @@ export default function Chat() {
   const [busyAction, setBusyAction] = useState(false);
   const [, setTick] = useState(0);
   const endRef = useRef(null);
+  const safeMessages = Array.isArray(messages) ? messages.filter(Boolean) : [];
 
   const load = async () => {
     if (!me || !userId) return;
@@ -55,7 +58,7 @@ export default function Chat() {
         supabase.from('offers').select('*').eq('seller_id', userId).eq('buyer_id', me.id),
         supabase.from('offers').select('*').eq('buyer_id', userId).eq('seller_id', me.id),
         supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200),
-        supabase.from('blocks').select('*').order('created_at', { ascending: false }).limit(200),
+        getBlockRelationship(me.id, userId),
         supabase.from('chat_clears').select('*').eq('user_id', me.id).eq('other_id', userId),
         supabase.from('chat_reads').select('*').eq('user_id', userId).eq('other_id', me.id),
       ]);
@@ -65,23 +68,18 @@ export default function Chat() {
       const theirOffers = theirOffersRes.data || [];
       const myOffers = myOffersRes.data || [];
       const orders = ordersRes.data || [];
-      const blocks = blocksRes.data || [];
+      const blocked = blocksRes === true;
       const clears = clearsRes.data || [];
       const theirReads = theirReadsRes.data || [];
       setOther(u);
       setTheirLastRead(theirReads[0]?.last_read_at || null);
       setOffers([...theirOffers, ...myOffers]);
       setPaidItemIds(orders.filter((o) => PAID_STATUSES.includes(o.status)).map((o) => o.item_id));
-      setCantMessage(
-        blocks.some(
-          (b) =>
-            (b.blocker_id === me.id && b.blocked_id === userId) ||
-            (b.blocker_id === userId && b.blocked_id === me.id)
-        )
-      );
+      setCantMessage(blocked);
       const clearedAt = clears[0]?.cleared_at;
       const conv = [...sent, ...received]
-        .filter((m) => !clearedAt || toDate(m.created_at) > toDate(clearedAt))
+        .filter(Boolean)
+        .filter((m) => !clearedAt || (m.created_at && toDate(m.created_at) > toDate(clearedAt)))
         .sort((a, b) => toDate(a.created_at) - toDate(b.created_at));
       setMessages(conv);
       if (itemId) {
@@ -96,6 +94,12 @@ export default function Chat() {
   };
 
   useEffect(() => { load(); }, [me, userId, itemId]);
+
+  useEffect(() => {
+    const reload = () => load();
+    window.addEventListener('revex:block-changed', reload);
+    return () => window.removeEventListener('revex:block-changed', reload);
+  }, [me, userId, itemId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -137,30 +141,49 @@ export default function Chat() {
   }, []);
 
   const send = async () => {
-    if (!text.trim() || !me) return;
+    if (!text.trim() || !me || cantMessage || sending) return;
     const body = text.trim();
-    const res = await supabase.functions.invoke("sendChatMessage", { body: {
-      receiverId: userId,
-      text: body,
-      itemId: itemId || "",
-      itemTitle: item?.title || "",
-    }});
-    if (res.error || res.data?.error) {
-      setCantMessage(true);
-      return;
+    const sentAt = new Date().toISOString();
+    setSending(true);
+
+    try {
+      const { data: persistedMessage, error } = await supabase
+        .from("chat_messages")
+        .insert({
+          sender_id: me.id,
+          receiver_id: userId,
+          sender_name: displayName(me) || me.email,
+          text: body,
+          created_at: sentAt,
+          item_id: itemId || null,
+          item_title: item?.title || null,
+        })
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      setMessages((current) => {
+        const safeCurrent = Array.isArray(current) ? current.filter(Boolean) : [];
+        if (safeCurrent.some((message) => message.id === persistedMessage.id)) return safeCurrent;
+        return [...safeCurrent, persistedMessage];
+      });
+      setText("");
+      supabase.functions.invoke('sendNotification', { body: {
+        recipientId: userId,
+        title: displayName(me) || me.email,
+        content: body.slice(0, 100),
+        actionUrl: `/chat/${me.id}`,
+        type: "message",
+        targetType: "chat",
+        targetId: me.id,
+        thumbnail: item?.image_url || "",
+      }}).catch(() => {});
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Couldn't send message", description: "Check your connection and try again." });
+    } finally {
+      setSending(false);
     }
-    setMessages((m) => [...m, res.data.message]);
-    setText("");
-    supabase.functions.invoke('sendNotification', { body: {
-      recipientId: userId,
-      title: displayName(me) || me.email,
-      content: body.slice(0, 100),
-      actionUrl: `/chat/${me.id}`,
-      type: "message",
-      targetType: "chat",
-      targetId: me.id,
-      thumbnail: item?.image_url || "",
-    }}).catch(() => {});
   };
 
   const respond = async (offer, status) => {
@@ -200,13 +223,14 @@ export default function Chat() {
   };
 
   const deleteChat = async () => {
-    if (!me) return;
+    if (!me || !userId) return;
     setBusyAction(true);
     try {
-      await supabase.functions.invoke("clearChat", { body: { userId } });
+      await clearChatHistory(me.id, userId);
       navigate("/inbox");
     } catch (e) {
       console.error(e);
+      toast({ title: "Couldn't delete chat", description: "Try again." });
     } finally {
       setBusyAction(false);
       setConfirm("");
@@ -217,7 +241,8 @@ export default function Chat() {
     if (!me) return;
     setBusyAction(true);
     try {
-      await supabase.functions.invoke("blockUser", { body: { userId } });
+      await setBlockRelationship(me.id, userId);
+      setCantMessage(true);
       navigate("/inbox");
     } catch (e) {
       console.error(e);
@@ -254,15 +279,15 @@ export default function Chat() {
   };
 
   const timeline = [
-    ...messages.map((m) => ({ kind: "msg", at: m.created_at, data: m })),
+    ...safeMessages.map((m) => ({ kind: "msg", at: m.created_at, data: m })),
     ...offers.map((o) => ({ kind: "offer", at: o.created_at, data: o })),
-  ].sort((a, b) => new Date(a.at) - new Date(b.at));
+  ].filter((item) => item.at).sort((a, b) => new Date(a.at) - new Date(b.at));
 
   // Delivered / Seen line — shown only under my most recent message.
-  const lastMine = [...messages].reverse().find((m) => m.sender_id === me?.id);
+  const lastMine = [...safeMessages].reverse().find((m) => m.sender_id === me?.id);
   const seenAgo = theirLastRead ? timeAgo(theirLastRead) : "";
   const myStatus =
-    lastMine && theirLastRead && toDate(theirLastRead) >= toDate(lastMine.created_at)
+    lastMine && theirLastRead && lastMine.created_at && toDate(theirLastRead) >= toDate(lastMine.created_at)
       ? /^\d+[smhd]$/.test(seenAgo)
         ? `Seen ${seenAgo} ago`
         : `Seen ${seenAgo}`
@@ -270,7 +295,7 @@ export default function Chat() {
 
   const otherName =
     displayName(other) ||
-    messages.find((m) => m.sender_id === userId)?.sender_name ||
+    safeMessages.find((m) => m.sender_id === userId)?.sender_name ||
     offers.find((o) => o.buyer_id === userId)?.buyer_name ||
     "User";
 
@@ -360,7 +385,7 @@ export default function Chat() {
               placeholder="Type a message..."
               className="acid-input flex-1"
             />
-            <button onClick={send} disabled={!text.trim()} className="acid-btn bg-brand-red text-white px-3 disabled:opacity-40">
+            <button onClick={send} disabled={!text.trim() || sending} className="acid-btn bg-brand-red text-white px-3 disabled:opacity-40">
               <Send className="w-5 h-5" />
             </button>
           </div>

@@ -4,17 +4,18 @@ import { supabase, uploadPublicFile } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import SiteHeader from "@/components/SiteHeader";
 import BottomNav from "@/components/BottomNav";
-import { Loader2, Upload, X, Plus, Trash2, Image as ImageIcon, Sparkles } from "lucide-react";
+import { Loader2, Upload, X, Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { POST_CATEGORIES, POST_CATEGORY_LABELS, normalizeTags } from "@/lib/revex";
 import TagChips from "@/components/TagChips";
-import CameraRecorder from "@/components/CameraRecorder";
-import { detectHaulItems } from "@/lib/aiSuggest";
-import HaulScanSheet from "@/components/HaulScanSheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+/** @typedef {{ url: string, type: "image" }} UploadMedia */
+/** @typedef {{ title: string, brand: string, size: string, condition: string, price: string, shipping_price: string, image_url: string, category: string, tags: string[] }} UploadItem */
+/** @typedef {{ id: string, media?: Array<{ url: string, type: string }>, items?: UploadItem[], haul_title?: string, caption?: string, tags?: string[], category?: string }} UploadDraft */
 
 const blankItem = () => ({
   title: "", brand: "", size: "", condition: "good", price: "", shipping_price: "",
-  image_url: "", category: "tops", try_on_video_url: "", tags: []
+  image_url: "", category: "tops", tags: []
 });
 
 export default function UploadPage() {
@@ -24,18 +25,15 @@ export default function UploadPage() {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
 
+  /** @type {UploadMedia[]} */
   const [media, setMedia] = useState([]);
   const [haulTitle, setHaulTitle] = useState("");
   const [caption, setCaption] = useState("");
   const [tags, setTags] = useState("");
   const [category, setCategory] = useState("hauls");
+  /** @type {UploadItem[]} */
   const [items, setItems] = useState([blankItem()]);
   const isMobile = useIsMobile();
-  const [showCamera, setShowCamera] = useState(false);
-  const [scanOpen, setScanOpen] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [scanError, setScanError] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
 
   const [draftId, setDraftId] = useState(routeDraftId || null);
   const [saveState, setSaveState] = useState("idle");
@@ -48,17 +46,20 @@ export default function UploadPage() {
     hydrated.current = false;
     (async () => {
       try {
+        /** @type {UploadDraft | null} */
         let draft = null;
         if (routeDraftId) {
           const { data } = await supabase.from('drafts').select('*').eq('id', routeDraftId).single();
-          draft = data;
+          draft = /** @type {UploadDraft} */ (data);
         } else if (user?.id) {
           const { data: mine } = await supabase.from('drafts').select('*')
             .eq('created_by_id', user.id).order('updated_at', { ascending: false }).limit(1);
-          draft = mine?.[0] || null;
+          draft = /** @type {UploadDraft | undefined} */ (mine?.[0]) || null;
         }
         if (cancelled || !draft) return;
-        const m = (draft.media || []).map((x) => ({ url: x.url, type: x.type }));
+        const m = (draft.media || [])
+          .filter((x) => x.type !== "video")
+          .map((x) => ({ url: x.url, type: "image" }));
         const its = Array.isArray(draft.items) && draft.items.length ? draft.items : [blankItem()];
         setDraftId(draft.id);
         setMedia(m);
@@ -120,15 +121,22 @@ export default function UploadPage() {
     return () => clearTimeout(t);
   }, [saveState]);
 
+  /**
+   * @param {FileList} files
+   * @param {"media" | number} kind
+   */
   const onPickFiles = async (files, kind) => {
     const arr = Array.from(files);
     for (const file of arr) {
+      if (!file.type.startsWith("image/")) {
+        alert("Only image files are supported.");
+        continue;
+      }
       setBusy(true);
       try {
         const { file_url } = await uploadPublicFile(file, "posts");
-        const type = file.type.startsWith("video") ? "video" : "image";
         if (kind === "media") {
-          setMedia((m) => [...m, { url: file_url, type }]);
+          setMedia((m) => [...m, { url: file_url, type: "image" }]);
         } else {
           setItems((its) => its.map((it, i) => i === kind ? { ...it, image_url: file_url } : it));
         }
@@ -137,109 +145,28 @@ export default function UploadPage() {
     }
   };
 
-  const onPickItemVideo = async (i, file) => {
-    if (!file) return;
-    setBusy(true);
-    try {
-      const { file_url } = await uploadPublicFile(file, "try-on");
-      updateItem(i, "try_on_video_url", file_url);
-    } catch (e) { console.error(e); }
-    setBusy(false);
-  };
-
+  /**
+   * @param {number} i
+   * @param {keyof UploadItem} field
+   * @param {string} val
+   */
   const updateItem = (i, field, val) => {
     setItems((its) => its.map((it, idx) => idx === i ? { ...it, [field]: val } : it));
   };
 
-  const onRecorded = async (file, localUrl) => {
-    setBusy(true);
-    try {
-      const { file_url } = await uploadPublicFile(file, "posts");
-      setMedia((m) => [...m, { url: file_url, type: "video", localUrl }]);
-      setShowCamera(false);
-    } catch (e) { console.error(e); }
-    setBusy(false);
-  };
-
-  const itemKey = (t, b) => `${(t || "").trim().toLowerCase()}|${(b || "").trim().toLowerCase()}`;
-
-  const scanHaul = async () => {
-    const haulVideo = media.find((m) => m.type === "video");
-    if (!haulVideo) return;
-    const src = haulVideo.localUrl || haulVideo.url;
-    setScanError("");
-    setSuggestions([]);
-    setScanOpen(true);
-    setScanning(true);
-    try {
-      const found = await detectHaulItems(src);
-      const existing = new Set(items.map((it) => itemKey(it.title, it.brand)));
-      const fresh = found
-        .filter((s) => s && s.title)
-        .map((s, i) => ({
-          id: `s-${Date.now()}-${i}`,
-          title: s.title || "",
-          brand: s.brand || "",
-          size: s.size || "",
-          category: s.category || "tops",
-          condition: s.condition || "good",
-          price: s.price != null ? String(s.price) : "",
-          tags: normalizeTags(s.tags || []),
-          added: false,
-        }))
-        .filter((s) => !existing.has(itemKey(s.title, s.brand)));
-      setSuggestions(fresh);
-    } catch (e) {
-      console.error(e);
-      setScanError("We couldn't analyze this clip — please try again.");
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const editSuggestion = (id, field, val) =>
-    setSuggestions((ss) => ss.map((s) => (s.id === id ? { ...s, [field]: val } : s)));
-
-  const addSuggestions = (ids) => {
-    const chosen = suggestions.filter((s) => ids.includes(s.id) && !s.added);
-    if (!chosen.length) return;
-    setItems((its) => {
-      const isBlank = (it) => !it.title.trim() && !it.price && !it.image_url && !(it.tags && it.tags.length);
-      return [
-        ...its.filter((it) => !isBlank(it)),
-        ...chosen.map((s) => ({
-          title: s.title,
-          brand: s.brand,
-          size: s.size,
-          condition: s.condition,
-          price: s.price,
-          shipping_price: "3",
-          image_url: "",
-          category: s.category,
-          try_on_video_url: "",
-          tags: s.tags,
-        })),
-      ];
-    });
-    setSuggestions((ss) => ss.map((s) => (ids.includes(s.id) ? { ...s, added: true } : s)));
-  };
-
-  const addAllSuggestions = () => addSuggestions(suggestions.filter((s) => !s.added).map((s) => s.id));
   const addItem = () => setItems((its) => [...its, blankItem()]);
   const removeItem = (i) => setItems((its) => its.filter((_, idx) => idx !== i));
 
   const publish = async () => {
-    if (!haulTitle.trim() || media.length === 0) return;
+    if (!haulTitle.trim() || media.length === 0 || !user) return;
     setBusy(true);
     try {
-      const name = user?.display_name || user?.full_name || "Creator";
-      const video = media.find((m) => m.type === "video");
-      const images = media.filter((m) => m.type === "image").map((m) => m.url);
+      const name = user.display_name || user.full_name || "Creator";
+      const images = media.map((m) => m.url);
       const { data: post, error: postError } = await supabase.from('posts').insert({
         created_by_id: user.id,
         creator_name: name,
         creator_avatar: user.avatar || "",
-        video_url: video?.url || "",
         image_urls: images,
         haul_title: haulTitle.trim(),
         caption: caption.trim(),
@@ -265,7 +192,6 @@ export default function UploadPage() {
           price: Number(it.price),
           shipping_price: Number(it.shipping_price || 0),
           image_url: it.image_url,
-          try_on_video_url: it.try_on_video_url || "",
           tags: normalizeTags(it.tags),
           category: it.category,
           status: "available",
@@ -324,7 +250,7 @@ export default function UploadPage() {
               <div className="grid grid-cols-3 gap-2">
                 {media.map((m, i) => (
                   <div key={i} className="aspect-square border-2 border-border overflow-hidden relative bg-black">
-                    {m.type === "video" ? <video src={m.url} className="w-full h-full object-cover" muted /> : <img src={m.url} className="w-full h-full object-cover" alt="" />}
+                    <img src={m.url} className="w-full h-full object-cover" alt="" />
                     <button onClick={() => setMedia((arr) => arr.filter((_, idx) => idx !== i))}
                       className="absolute top-1 right-1 sticker bg-brand-red text-white w-6 h-6 rounded-full flex items-center justify-center">
                       <X className="w-3.5 h-3.5" />
@@ -332,11 +258,6 @@ export default function UploadPage() {
                   </div>
                 ))}
               </div>
-            )}
-            {isMobile && media.some((m) => m.type === "video") && (
-              <button onClick={scanHaul} disabled={scanning} className="acid-btn bg-foreground text-background w-full disabled:opacity-50">
-                {scanning ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing your haul…</> : <><Sparkles className="w-4 h-4" /> Scan with AI</>}
-              </button>
             )}
             <button disabled={media.length === 0} onClick={() => setStep(2)} className="acid-btn bg-foreground text-background w-full disabled:opacity-40">
               Next
@@ -410,25 +331,6 @@ export default function UploadPage() {
                   <option value="fair">Fair</option>
                 </select>
                 <div>
-                  <span className="acid-label">Try-on video (optional)</span>
-                  {it.try_on_video_url ? (
-                    <div className="relative mt-1">
-                      <video src={it.try_on_video_url} className="w-full aspect-[3/4] object-cover border-2 border-border bg-black" controls playsInline muted />
-                      <button onClick={() => updateItem(i, "try_on_video_url", "")}
-                        className="absolute top-1 right-1 sticker bg-brand-red text-white w-7 h-7 rounded-full flex items-center justify-center">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="acid-card-sm bg-muted p-3 flex flex-col items-center gap-1 cursor-pointer mt-1">
-                      {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                      <span className="text-xs font-heading uppercase">Upload try-on clip</span>
-                      <span className="text-[10px] text-muted-foreground">Short clip, &lt; 25MB</span>
-                      <input type="file" accept="video/*" className="hidden" onChange={(e) => e.target.files && onPickItemVideo(i, e.target.files[0])} />
-                    </label>
-                  )}
-                </div>
-                <div>
                   <span className="acid-label">Tags</span>
                   <div className="mt-1"><TagChips value={it.tags} onChange={(arr) => updateItem(i, "tags", arr)} /></div>
                 </div>
@@ -444,20 +346,6 @@ export default function UploadPage() {
           </div>
         )}
       </div>
-      {showCamera && (
-        <CameraRecorder onRecorded={onRecorded} onClose={() => setShowCamera(false)} />
-      )}
-      {scanOpen && (
-        <HaulScanSheet
-          suggestions={suggestions}
-          loading={scanning}
-          error={scanError}
-          onEdit={editSuggestion}
-          onAdd={(id) => addSuggestions([id])}
-          onAddAll={addAllSuggestions}
-          onClose={() => setScanOpen(false)}
-        />
-      )}
       <BottomNav />
     </div>
   );

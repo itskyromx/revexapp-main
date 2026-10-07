@@ -1,7 +1,6 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase, getCurrentUserProfile } from '@/api/supabaseClient';
-
-const AuthContext = createContext();
+import { AuthContext } from '@/lib/authContextValue';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -36,6 +35,13 @@ export const AuthProvider = ({ children }) => {
     await checkUserAuth();
   };
 
+  const logout = async (shouldRedirect = true) => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setIsAuthenticated(false);
+    if (shouldRedirect) window.location.href = '/login';
+  };
+
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
@@ -56,13 +62,6 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
       setAuthError({ type: 'unknown', message: error.message || 'An unexpected error occurred' });
     }
-  };
-
-  const logout = async (shouldRedirect = true) => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setIsAuthenticated(false);
-    if (shouldRedirect) window.location.href = '/login';
   };
 
   const navigateToLogin = () => {
@@ -88,10 +87,3 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};

@@ -4,6 +4,8 @@ import { supabase } from "@/api/supabaseClient";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import HaulCard from "@/components/HaulCard";
 import { toast } from "@/components/ui/use-toast";
+import { getBlockedIds } from "@/lib/blocks";
+import { recordPostView } from "@/lib/postStats";
 
 export default function HaulDetail() {
   const { postId } = useParams();
@@ -13,7 +15,13 @@ export default function HaulDetail() {
 
   const loadPost = async () => {
     const { data: p } = await supabase.from('posts').select('*').eq('id', postId).single();
-    setPost(p);
+    const blockedIds = await getBlockedIds();
+    if (!p || blockedIds.includes(p.created_by_id)) {
+      setPost(null);
+      return null;
+    }
+    const viewed = await recordPostView(postId);
+    setPost({ ...p, ...(viewed || {}) });
     return p;
   };
 
@@ -23,6 +31,12 @@ export default function HaulDetail() {
         await loadPost();
       } catch (e) { console.error(e); } finally { setLoading(false); }
     })();
+  }, [postId]);
+
+  useEffect(() => {
+    const reload = () => loadPost().catch((error) => console.error(error));
+    window.addEventListener('revex:block-changed', reload);
+    return () => window.removeEventListener('revex:block-changed', reload);
   }, [postId]);
 
   // Back from Stripe: confirm the boost payment, then re-read the stamped post.

@@ -5,15 +5,16 @@ import { supabase } from "@/api/supabaseClient";
 import Avatar from "@/components/Avatar";
 import ShareSheet from "@/components/ShareSheet";
 import { timeAgo, loadLiked, saveLiked } from "@/lib/revex";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth } from "@/lib/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
+import { updatePostCounter } from "@/lib/postStats";
 import BoostBadge from "@/components/BoostBadge";
 import PostOwnerActions from "@/components/PostOwnerActions";
 
-function ActionButton({ icon: Icon, count, onClick, active, activeClass = "fill-brand-red text-brand-red" }) {
+function ActionButton({ icon: Icon, count, onClick, active, disabled = false, activeClass = "fill-brand-red text-brand-red" }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-1">
+    <button onClick={onClick} disabled={disabled} className="flex flex-col items-center gap-1 disabled:opacity-50">
       <Icon
         className={`w-9 h-9 drop-shadow-[0_2px_3px_rgba(0,0,0,0.7)] ${active ? activeClass : "text-white"}`}
         strokeWidth={2.2}
@@ -31,6 +32,8 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
   const [liked, setLiked] = useState(() => loadLiked().has(post.id));
   const [likeCount, setLikeCount] = useState(post.like_count || 0);
   const [saveCount, setSaveCount] = useState(post.bookmark_count || 0);
+  const [shareCount, setShareCount] = useState(post.share_count || 0);
+  const [busyAction, setBusyAction] = useState(null);
   const [caption, setCaption] = useState(post.caption || "");
   const [tags, setTags] = useState(post.tags || []);
   const [boostExpiresAt, setBoostExpiresAt] = useState(post.boost_expires_at || "");
@@ -41,9 +44,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
   const saved = isSaved("post", post.id);
   const isOwner = Boolean(user && post.created_by_id === user.id);
 
-  const media = post.video_url
-    ? [{ type: "video", url: post.video_url }]
-    : (post.image_urls || []).map((u) => ({ type: "image", url: u }));
+  const media = (post.image_urls || []).map((url) => ({ type: "image", url }));
   const current = media[mediaIndex];
 
   const captionLong = caption.length > 100;
@@ -53,26 +54,47 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
   useEffect(() => () => { if (burstTimer.current) clearTimeout(burstTimer.current); }, []);
 
+  useEffect(() => {
+    setLikeCount(post.like_count || 0);
+    setSaveCount(post.bookmark_count || 0);
+    setShareCount(post.share_count || 0);
+  }, [post.id, post.like_count, post.bookmark_count, post.share_count]);
+
+  const reconcilePost = async (updated) => {
+    if (!updated) return;
+    setLikeCount(updated.like_count || 0);
+    setSaveCount(updated.bookmark_count || 0);
+    setShareCount(updated.share_count || 0);
+    onChanged?.(updated);
+  };
+
   // The single like path — used by the heart button and by a double tap.
   const applyLike = async (next) => {
+    if (busyAction || next === liked) return;
+    setBusyAction("like");
     const likedSet = loadLiked();
-    setLiked(next);
-    setLikeCount((c) => Math.max(0, c + (next ? 1 : -1)));
-    if (next) likedSet.add(post.id); else likedSet.delete(post.id);
-    saveLiked(likedSet);
     try {
-      await supabase.from('posts').update({ like_count: Math.max(0, likeCount + (next ? 1 : -1)) }).eq('id', post.id);
-    } catch {}
-    if (next && post.created_by_id) {
-      supabase.functions.invoke("sendNotification", { body: {
-        recipientId: post.created_by_id,
-        content: `liked your post "${post.haul_title}"`,
-        type: "like",
-        targetType: "post",
-        targetId: post.id,
-        thumbnail: post.image_urls?.[0] || "",
-        inAppOnly: true,
-      }}).catch(() => {});
+      const updated = await updatePostCounter(post.id, "like_count", next ? 1 : -1);
+      if (!updated) throw new Error("Like update did not return a post");
+      setLiked(next);
+      if (next) likedSet.add(post.id); else likedSet.delete(post.id);
+      saveLiked(likedSet);
+      await reconcilePost(updated);
+      if (next && post.created_by_id) {
+        supabase.functions.invoke("sendNotification", { body: {
+          recipientId: post.created_by_id,
+          content: `liked your post "${post.haul_title}"`,
+          type: "like",
+          targetType: "post",
+          targetId: post.id,
+          thumbnail: post.image_urls?.[0] || "",
+          inAppOnly: true,
+        }}).catch(() => {});
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setBusyAction(null);
     }
   };
 
@@ -97,8 +119,18 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
   };
 
   const toggleSave = async () => {
-    const next = await toggleBookmark(user?.id, "post", post);
-    setSaveCount((c) => Math.max(0, c + (next ? 1 : -1)));
+    if (busyAction) return;
+    setBusyAction("save");
+    try {
+      const next = await toggleBookmark(user?.id, "post", post);
+      const updated = await updatePostCounter(post.id, "bookmark_count", next ? 1 : -1);
+      if (!updated) throw new Error("Bookmark update did not return a post");
+      await reconcilePost(updated);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   const openChat = () => {
@@ -119,9 +151,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
     <div className="relative w-full h-full snap-start overflow-hidden bg-black noise-overlay">
       {/* Media */}
       <div className="absolute inset-0">
-        {current?.type === "video" ? (
-          <video src={current.url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
-        ) : current?.url ? (
+        {current?.url ? (
           <img src={current.url} alt={post.haul_title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full grid-bg bg-muted" />
@@ -203,7 +233,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
           {/* Right action rail — borderless, TikTok-style */}
           <div className="absolute right-3 bottom-28 z-20 flex flex-col items-center gap-5">
-            <ActionButton icon={Heart} count={likeCount} onClick={toggleLike} active={liked} />
+            <ActionButton icon={Heart} count={likeCount} onClick={toggleLike} active={liked} disabled={busyAction === "like"} />
             <ActionButton icon={MessageCircle} count={null} onClick={openChat} />
             <ActionButton
               icon={Bookmark}
@@ -211,8 +241,9 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
               onClick={toggleSave}
               active={saved}
               activeClass="fill-brand-yellow text-brand-yellow"
+              disabled={busyAction === "save"}
             />
-            <ActionButton icon={Share2} count={(post.share_count || 0) + 1} onClick={share} />
+            <ActionButton icon={Share2} count={shareCount} onClick={share} />
           </div>
 
           {/* Bottom info — caption + tags only, raised above bottom nav */}
@@ -245,6 +276,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
           post={post}
           chromeVisible={chromeVisible}
           onToggleChrome={onToggleChrome ? handleToggleChrome : undefined}
+          onShared={(updated) => reconcilePost(updated)}
           onClose={() => setShareOpen(false)}
         />
       )}

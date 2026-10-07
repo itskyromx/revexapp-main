@@ -2,17 +2,16 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, X, Upload, Loader2, ShoppingBag, Bookmark } from "lucide-react";
+import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, Bookmark } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import OfferSheet from "@/components/OfferSheet";
 import CheckoutSheet from "@/components/CheckoutSheet";
-import TryOnVideo from "@/components/TryOnVideo";
 import TagChips from "@/components/TagChips";
 import { formatPrice, CONDITION_LABELS, normalizeTags } from "@/lib/revex";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
 import BottomNav from "@/components/BottomNav";
-import { createUniqueId } from "@/lib/uniqueId";
+import { getBlockRelationship } from "@/lib/blocks";
 
 export default function ItemDetail() {
   const { itemId } = useParams();
@@ -28,10 +27,9 @@ export default function ItemDetail() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editTags, setEditTags] = useState([]);
-  const [editVideo, setEditVideo] = useState("");
   const [saving, setSaving] = useState(false);
-  const [busyVideo, setBusyVideo] = useState(false);
   const [cancelNotice, setCancelNotice] = useState("");
+  const [blockedRelationship, setBlockedRelationship] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -45,15 +43,17 @@ export default function ItemDetail() {
         if (it.created_by_id) {
           const { data: of } = await supabase.from('offers').select('*').eq('item_id', itemId);
           setOffers(of);
+          if (user?.id) {
+            setBlockedRelationship(await getBlockRelationship(user.id, it.created_by_id));
+          }
         }
       } catch (e) { console.error(e); } finally { setLoading(false); }
     })();
-  }, [itemId]);
+  }, [itemId, user?.id]);
 
   useEffect(() => {
     if (item) {
       setEditTags(item.tags || []);
-      setEditVideo(item.try_on_video_url || "");
     }
   }, [item]);
 
@@ -70,25 +70,12 @@ export default function ItemDetail() {
 
   const isOwner = user && item && user.id === item.created_by_id;
 
-  const onPickEditVideo = async (file) => {
-    if (!file) return;
-    setBusyVideo(true);
-    try {
-      const path = `try-on/${createUniqueId()}-${file.name}`;
-      const { error } = await supabase.storage.from('media').upload(path, file);
-      if (error) throw error;
-      const { data: pub } = supabase.storage.from('media').getPublicUrl(path);
-      setEditVideo(pub.publicUrl);
-    } catch (e) { console.error(e); }
-    setBusyVideo(false);
-  };
-
   const saveEdit = async () => {
     setSaving(true);
     try {
       const tags = normalizeTags(editTags);
-      await supabase.from('items').update({ tags, try_on_video_url: editVideo }).eq('id', item.id);
-      setItem((it) => ({ ...it, tags, try_on_video_url: editVideo }));
+      await supabase.from('items').update({ tags }).eq('id', item.id);
+      setItem((it) => ({ ...it, tags }));
       setEditing(false);
     } catch (e) { console.error(e); }
     setSaving(false);
@@ -161,7 +148,7 @@ export default function ItemDetail() {
     }}).catch(() => {});
   };
 
-  const canBuy = item?.status === "available" && !isOwner;
+  const canBuy = item?.status === "available" && !isOwner && !blockedRelationship;
 
   if (loading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
   if (!item) return <div className="min-h-screen bg-background grid place-items-center p-6"><div className="acid-card p-6">Item not found.</div></div>;
@@ -177,15 +164,6 @@ export default function ItemDetail() {
 
       <div className="max-w-md mx-auto p-4">
         {cancelNotice && <div className="acid-card-sm bg-muted p-3 mb-3 text-xs">{cancelNotice}</div>}
-        {item.try_on_video_url && (
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="sticker bg-brand-red text-white px-2 py-0.5 text-xs">Try-On</span>
-              <span className="acid-label">Watch it worn</span>
-            </div>
-            <TryOnVideo src={item.try_on_video_url} className="aspect-[3/4]" />
-          </div>
-        )}
         <div className="acid-card overflow-hidden">
           <div className="aspect-[4/5] bg-muted border-b-[3px] border-border relative">
             {item.image_url ?
@@ -246,21 +224,6 @@ export default function ItemDetail() {
             {editing && (
               <>
                 <div>
-                  <span className="acid-label">Try-on video</span>
-                  {editVideo ? (
-                    <div className="relative mt-1">
-                      <video src={editVideo} className="w-full aspect-[3/4] object-cover border-2 border-border bg-black" controls playsInline muted />
-                      <button onClick={() => setEditVideo("")} className="absolute top-1 right-1 sticker bg-brand-red text-white w-7 h-7 rounded-full flex items-center justify-center"><X className="w-4 h-4" /></button>
-                    </div>
-                  ) : (
-                    <label className="acid-card-sm bg-muted p-3 flex flex-col items-center gap-1 cursor-pointer mt-1">
-                      {busyVideo ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                      <span className="text-xs font-heading uppercase">Upload try-on clip</span>
-                      <input type="file" accept="video/*" className="hidden" onChange={(e) => e.target.files && onPickEditVideo(e.target.files[0])} />
-                    </label>
-                  )}
-                </div>
-                <div>
                   <span className="acid-label">Tags</span>
                   <div className="mt-1"><TagChips value={editTags} onChange={setEditTags} /></div>
                 </div>
@@ -273,6 +236,12 @@ export default function ItemDetail() {
         )}
 
         {/* Owner actions */}
+        {blockedRelationship && !isOwner && (
+          <div className="mt-4 acid-card p-4 text-sm text-muted-foreground">
+            You can’t view or message this seller because you’ve blocked them or they’ve blocked you.
+          </div>
+        )}
+
         {isOwner ? (
           <div className="mt-4 acid-card p-4">
             <h3 className="font-display uppercase text-lg mb-2">Offers ({offers.length})</h3>
@@ -313,13 +282,15 @@ export default function ItemDetail() {
               </button>
             )}
             <div className="grid grid-cols-2 gap-2">
-              {item.accepts_offers && (
+              {item.accepts_offers && !blockedRelationship && (
                 <button onClick={() => setShowOffer(true)} className="acid-btn bg-muted text-foreground"><Tag className="w-4 h-4" /> Make Offer</button>
               )}
-              <button onClick={() => item.created_by_id && navigate(`/chat/${item.created_by_id}?itemId=${item.id}`)}
-                className={`acid-btn bg-foreground text-background ${item.accepts_offers ? "" : "col-span-2"}`}>
-                <MessageCircle className="w-4 h-4" /> Message Seller
-              </button>
+              {!blockedRelationship && (
+                <button onClick={() => item.created_by_id && navigate(`/chat/${item.created_by_id}?itemId=${item.id}`)}
+                  className={`acid-btn bg-foreground text-background ${item.accepts_offers ? "" : "col-span-2"}`}>
+                  <MessageCircle className="w-4 h-4" /> Message Seller
+                </button>
+              )}
             </div>
           </div>
         )}

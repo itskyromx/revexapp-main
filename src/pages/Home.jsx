@@ -88,9 +88,7 @@ export default function Home() {
                       key={p.id}
                       onClick={() => navigate("/watch")}
                       className="aspect-[3/4] border-[3px] border-border bg-black relative overflow-hidden group">
-                      {p.video_url ? (
-                        <video src={p.video_url} className="w-full h-full object-cover opacity-90 group-hover:opacity-100" muted playsInline />
-                      ) : p.image_urls?.[0] ? (
+                      {p.image_urls?.[0] ? (
                         <img src={p.image_urls[0]} className="w-full h-full object-cover opacity-90 group-hover:opacity-100" alt="" />
                       ) : <div className="w-full h-full grid-bg" />}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />

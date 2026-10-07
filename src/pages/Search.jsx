@@ -172,8 +172,7 @@ export default function Search() {
                       key={p.id}
                       onClick={() => navigate("/watch")}
                       className="aspect-[3/4] border-[3px] border-border bg-black relative overflow-hidden">
-                      {p.video_url ? <video src={p.video_url} className="w-full h-full object-cover opacity-90" muted playsInline /> :
-                        p.image_urls?.[0] ? <img src={p.image_urls[0]} className="w-full h-full object-cover opacity-90" alt="" /> :
+                      {p.image_urls?.[0] ? <img src={p.image_urls[0]} className="w-full h-full object-cover opacity-90" alt="" /> :
                         <div className="w-full h-full grid-bg" />}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                       <p className="absolute bottom-2 left-2 right-2 font-display text-white text-xs uppercase line-clamp-2">{p.haul_title}</p>

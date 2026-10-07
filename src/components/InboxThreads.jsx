@@ -5,6 +5,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Avatar from "@/components/Avatar";
 import { formatPrice, timeAgo, toDate } from "@/lib/revex";
 import { loadProfilesById, profileLabel } from "@/lib/profileData";
+import { getBlockDirection } from "@/lib/blocks";
 
 /**
  * One conversation thread per person, derived from the messages and offers
@@ -37,15 +38,14 @@ export default function InboxThreads() {
     setLoadError("");
     (async () => {
       try {
-        const [sentRes, receivedRes, asSellerRes, asBuyerRes, blocksRes, clearsRes] = await Promise.all([
+        const [sentRes, receivedRes, asSellerRes, asBuyerRes, clearsRes] = await Promise.all([
           supabase.from('chat_messages').select('*').eq('sender_id', user.id).order('created_at', { ascending: false }).limit(200),
           supabase.from('chat_messages').select('*').eq('receiver_id', user.id).order('created_at', { ascending: false }).limit(200),
           supabase.from('offers').select('*').eq('seller_id', user.id),
           supabase.from('offers').select('*').eq('buyer_id', user.id),
-          supabase.from('blocks').select('*').order('created_at', { ascending: false }).limit(200),
           supabase.from('chat_clears').select('*').eq('user_id', user.id),
         ]);
-        const queryError = [sentRes, receivedRes, asSellerRes, asBuyerRes, blocksRes, clearsRes]
+        const queryError = [sentRes, receivedRes, asSellerRes, asBuyerRes, clearsRes]
           .find((result) => result.error)?.error;
         if (queryError) throw queryError;
         if (!alive) return;
@@ -54,24 +54,16 @@ export default function InboxThreads() {
         const received = receivedRes.data || [];
         const asSeller = asSellerRes.data || [];
         const asBuyer = asBuyerRes.data || [];
-        const blocks = blocksRes.data || [];
         const clears = clearsRes.data || [];
 
         const msgs = [...sent, ...received];
 
-        // Blocked people and cleared conversations stay out of the inbox.
-        const blockedIds = [
-          ...new Set([
-            ...blocks.filter((b) => b.blocker_id === user.id).map((b) => b.blocked_id),
-            ...blocks.filter((b) => b.blocked_id === user.id).map((b) => b.blocker_id),
-          ]),
-        ].filter(Boolean);
+        // Keep blocked conversations visible in the inbox, but disallow sending.
         const clearedAt = Object.fromEntries(clears.map((c) => [c.other_id, c.cleared_at]));
 
         const map = new Map();
         const touch = (otherId, name, when, preview, isOffer) => {
           if (!otherId || otherId === user.id || !when) return;
-          if (blockedIds.includes(otherId)) return;
           const cleared = clearedAt[otherId];
           if (cleared && toDate(when) <= toDate(cleared)) return;
           const t = map.get(otherId) || { id: otherId, name: "", at: "", preview: "", isOffer: false };
@@ -99,15 +91,17 @@ export default function InboxThreads() {
         });
 
         const profiles = await loadProfilesById([...map.keys()]);
-        const resolvedThreads = [...map.values()].map((thread) => {
+        const resolvedThreads = await Promise.all([...map.values()].map(async (thread) => {
           const profile = profiles[thread.id];
           const fallbackName = thread.name && !thread.name.includes("@") ? thread.name : "User";
+          const blockDirection = await getBlockDirection(user.id, thread.id);
           return {
             ...thread,
             name: profileLabel(profile, fallbackName),
             avatar: profile?.avatar || "",
+            blocked: Boolean(blockDirection),
           };
-        });
+        }));
         setThreads(resolvedThreads.sort((a, b) => toDate(b.at) - toDate(a.at)));
       } catch (e) {
         if (!alive) return;
@@ -120,6 +114,16 @@ export default function InboxThreads() {
     })();
     return () => { alive = false; };
   }, [user?.id, userLoading, retryKey]);
+
+  useEffect(() => {
+    const reload = () => setRetryKey((key) => key + 1);
+    window.addEventListener('revex:block-changed', reload);
+    window.addEventListener('revex:chat-cleared', reload);
+    return () => {
+      window.removeEventListener('revex:block-changed', reload);
+      window.removeEventListener('revex:chat-cleared', reload);
+    };
+  }, []);
 
   if (userLoading || loading) {
     return (
@@ -166,17 +170,23 @@ export default function InboxThreads() {
     <div className="space-y-2">
       {threads.map((t) => (
         <button
-          key={t.id}
           onClick={() => navigate(`/chat/${t.id}`)}
-          className="acid-card w-full p-3 flex items-center gap-3 text-left">
+          key={t.id}
+          className={`acid-card w-full p-3 flex items-center gap-3 text-left ${t.blocked ? "opacity-80" : ""}`}
+          aria-label={t.blocked ? "Blocked conversation" : `Open conversation with ${t.name}`}
+        >
           <Avatar name={t.name} src={t.avatar} size={44} />
           <div className="min-w-0 flex-1">
             <p className="font-heading font-bold text-sm truncate">{t.name || "User"}</p>
             <p className={`text-xs truncate ${t.isOffer ? "text-brand-red font-heading" : "text-muted-foreground"}`}>
-              {t.preview}
+              {t.blocked ? "This conversation is blocked" : t.preview}
             </p>
           </div>
-          <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(t.at)}</span>
+          {t.blocked ? (
+            <span className="text-[10px] font-heading uppercase text-muted-foreground shrink-0">Blocked</span>
+          ) : (
+            <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(t.at)}</span>
+          )}
         </button>
       ))}
     </div>

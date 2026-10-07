@@ -99,12 +99,8 @@ export default function SavedTab() {
                 onClick={() => navigate(`/haul/${p.id}`)}
                 className="acid-card-sm overflow-hidden aspect-[3/4] relative"
               >
-                {p.image_urls?.[0] || p.video_url ? (
-                  p.video_url ? (
-                    <video src={p.video_url} className="w-full h-full object-cover" muted />
-                  ) : (
-                    <img src={p.image_urls[0]} className="w-full h-full object-cover" alt="" />
-                  )
+                {p.image_urls?.[0] ? (
+                  <img src={p.image_urls[0]} className="w-full h-full object-cover" alt="" />
                 ) : (
                   <div className="w-full h-full grid-bg bg-muted" />
                 )}

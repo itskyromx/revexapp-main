@@ -51,12 +51,8 @@ export default function CreatorStats({ posts }) {
             {trending.map(({ post, score }, i) => (
               <div key={post.id} className={`acid-card-sm p-2 flex items-center gap-3 ${i === 0 ? "bg-brand-red text-white border-white" : "bg-card"}`}>
                 <div className="w-12 h-12 shrink-0 border-2 border-border overflow-hidden bg-muted">
-                  {post.image_urls?.[0] || post.video_url ? (
-                    post.video_url ? (
-                      <video src={post.video_url} className="w-full h-full object-cover" muted />
-                    ) : (
-                      <img src={post.image_urls[0]} className="w-full h-full object-cover" alt="" />
-                    )
+                  {post.image_urls?.[0] ? (
+                    <img src={post.image_urls[0]} className="w-full h-full object-cover" alt="" />
                   ) : (
                     <div className="w-full h-full grid-bg" />
                   )}

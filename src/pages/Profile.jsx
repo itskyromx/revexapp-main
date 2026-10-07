@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ArrowLeft, UserPlus, UserCheck, Package, ShoppingBag, Settings as SettingsIcon, FileText, ShieldAlert, Truck, Ban, Lock, Bookmark } from "lucide-react";
-import { getBlockedIds, hideBlocked } from "@/lib/blocks";
+import { getBlockedIds, hideBlocked, clearBlockRelationship } from "@/lib/blocks";
 import { displayName } from "@/lib/revex";
 import Avatar from "@/components/Avatar";
 import ItemCard from "@/components/ItemCard";
@@ -74,6 +74,20 @@ export default function Profile() {
     })();
   }, [targetId, me?.id]);
 
+  useEffect(() => {
+    const reload = () => {
+      if (!targetId) return;
+      const load = async () => {
+        const { data: blks } = await supabase.from('blocks').select('*').order('created_at', { ascending: false }).limit(200);
+        setBlocked(blks?.find((b) => b.blocker_id === me?.id && b.blocked_id === targetId) || null);
+        setBlockedByThem(blks?.find((b) => b.blocker_id === targetId && b.blocked_id === me?.id) || null);
+      };
+      load().catch((error) => console.error(error));
+    };
+    window.addEventListener('revex:block-changed', reload);
+    return () => window.removeEventListener('revex:block-changed', reload);
+  }, [targetId, me?.id]);
+
   const reloadPosts = async () => {
     const { data: ps } = await supabase.from('posts').select('*').eq('created_by_id', targetId);
     setPosts(hideBlocked(ps || [], await getBlockedIds(me?.id)));
@@ -91,7 +105,7 @@ export default function Profile() {
   }, [me?.id]);
 
   const toggleFollow = async () => {
-    if (!me || !targetId) return;
+    if (!me || !targetId || isBlockedRelationship) return;
     const next = !isFollowing;
     setFollowError("");
     setIsFollowing(next);
@@ -115,10 +129,11 @@ export default function Profile() {
   };
 
   const unblock = async () => {
-    if (!blocked) return;
+    if (!blocked || !me) return;
     try {
-      await supabase.from('blocks').delete().eq('id', blocked.id);
+      await clearBlockRelationship(me.id, targetId);
       setBlocked(null);
+      setBlockedByThem(null);
     } catch (e) {
       console.error(e);
     }
@@ -143,6 +158,7 @@ export default function Profile() {
   };
 
   const isSelf = me && targetId === me.id;
+  const isBlockedRelationship = Boolean(blocked || blockedByThem);
   const name = displayName(profile) || "Creator";
   const locked = Boolean(profile?.private_account) && !isSelf && !isFollowing;
 
@@ -220,26 +236,41 @@ export default function Profile() {
           {!isSelf && me ?
             blocked ?
               <>
-                <button onClick={unblock} className="acid-btn w-full mt-4 bg-muted text-foreground">
-                  <Ban className="w-4 h-4" /> Unblock
-                </button>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button disabled className="acid-btn bg-muted text-foreground opacity-60">
+                    <Ban className="w-4 h-4" /> Messaging off
+                  </button>
+                  <button onClick={unblock} className="acid-btn bg-muted text-foreground">
+                    <Ban className="w-4 h-4" /> Unblock
+                  </button>
+                </div>
                 <p className="text-xs text-muted-foreground mt-2">
                   You blocked this person — they can't message you and you won't see each other's posts.
                 </p>
               </> :
             blockedByThem ?
               <>
-                <button disabled className="acid-btn w-full mt-4 bg-muted text-foreground opacity-60">
-                  <Ban className="w-4 h-4" /> Blocked
-                </button>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button disabled className="acid-btn bg-muted text-foreground opacity-60">
+                    <Ban className="w-4 h-4" /> Can't message
+                  </button>
+                  <button disabled className="acid-btn bg-muted text-foreground opacity-60">
+                    <UserPlus className="w-4 h-4" /> Follow
+                  </button>
+                </div>
                 <p className="text-xs text-muted-foreground mt-2">
                   You can't follow or message this person right now.
                 </p>
               </> :
               <>
-                <button onClick={toggleFollow} className={`acid-btn w-full mt-4 ${isFollowing ? "bg-muted text-foreground" : "bg-brand-red text-white"}`}>
-                  {isFollowing ? <><UserCheck className="w-4 h-4" /> Following</> : <><UserPlus className="w-4 h-4" /> Follow</>}
-                </button>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button onClick={() => navigate(`/chat/${targetId}`)} className="acid-btn bg-foreground text-background">
+                    <UserPlus className="w-4 h-4" /> Message
+                  </button>
+                  <button onClick={toggleFollow} disabled={isBlockedRelationship} className={`acid-btn ${isFollowing ? "bg-muted text-foreground" : "bg-brand-red text-white"}`}>
+                    {isFollowing ? <><UserCheck className="w-4 h-4" /> Following</> : <><UserPlus className="w-4 h-4" /> Follow</>}
+                  </button>
+                </div>
                 {followError && <p className="text-xs text-brand-red mt-2">{followError}</p>}
               </> :
           isSelf ?
@@ -297,10 +328,8 @@ export default function Profile() {
               {posts.map((p) => (
                 <div key={p.id} className="acid-card-sm overflow-hidden aspect-[3/4] relative">
                   <button onClick={() => navigate(`/haul/${p.id}`)} className="absolute inset-0 w-full h-full">
-                    {p.image_urls?.[0] || p.video_url ?
-                      p.video_url ?
-                        <video src={p.video_url} className="w-full h-full object-cover" muted /> :
-                        <img src={p.image_urls[0]} className="w-full h-full object-cover" alt="" /> :
+                    {p.image_urls?.[0] ?
+                      <img src={p.image_urls[0]} className="w-full h-full object-cover" alt="" /> :
                       <div className="w-full h-full grid-bg bg-muted" />}
                     <div className="absolute bottom-0 inset-x-0 bg-black/70 p-1.5">
                       <p className="text-white text-[11px] font-heading font-bold line-clamp-2 leading-tight">{p.haul_title}</p>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { Loader2, Trash2 } from "lucide-react";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth } from "@/lib/useAuth";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,

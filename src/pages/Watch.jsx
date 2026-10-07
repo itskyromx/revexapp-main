@@ -3,7 +3,9 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { Home, Compass, Users, Plus, User, Inbox, Loader2 } from "lucide-react";
 import HaulCard from "@/components/HaulCard";
+import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 import { enrichPostCreators } from "@/lib/profileData";
+import { refreshPostCounters } from "@/lib/postStats";
 
 const NAV = [
   { to: "/home", icon: Home, label: "Home" },
@@ -17,6 +19,7 @@ const NAV = [
 export default function Watch() {
   const navigate = useNavigate();
   const location = useLocation();
+  /** @type {Array<any>} */
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(null);
@@ -26,8 +29,17 @@ export default function Watch() {
     setPosts([]);
     setCursor(null);
     try {
-      const res = await supabase.functions.invoke("getFeed", { body: { mode: "fyp" } });
-      setPosts(await enrichPostCreators(res.data?.posts || []));
+      const [res, blockedIds] = await Promise.all([
+        supabase.functions.invoke("getFeed", { body: { mode: "fyp" } }),
+        getBlockedIds(),
+      ]);
+      const postsFromFeed = hideBlocked(res.data?.posts || [], blockedIds);
+      const counters = await refreshPostCounters(postsFromFeed.map((post) => post.id));
+      const next = await enrichPostCreators(postsFromFeed.map((post) => ({
+        ...post,
+        ...counters[post.id],
+      })));
+      setPosts(next);
       setCursor(res.data.nextCursor);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, []);
@@ -37,8 +49,16 @@ export default function Watch() {
   const loadMore = async () => {
     if (!cursor) return;
     try {
-      const res = await supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } });
-      const more = await enrichPostCreators(res.data?.posts || []);
+      const [res, blockedIds] = await Promise.all([
+        supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } }),
+        getBlockedIds(),
+      ]);
+      const postsFromFeed = hideBlocked(res.data?.posts || [], blockedIds);
+      const counters = await refreshPostCounters(postsFromFeed.map((post) => post.id));
+      const more = await enrichPostCreators(postsFromFeed.map((post) => ({
+        ...post,
+        ...counters[post.id],
+      })));
       setPosts((p) => [...p, ...more]);
       setCursor(res.data.nextCursor);
     } catch {}

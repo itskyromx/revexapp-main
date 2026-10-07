@@ -24,7 +24,7 @@ const TARGETS = [
   { key: "tiktok", label: "TikTok", fallbackUrl: "https://www.tiktok.com/" },
 ];
 
-export default function ShareSheet({ post, onClose, chromeVisible = true, onToggleChrome }) {
+export default function ShareSheet({ post, onClose, chromeVisible = true, onToggleChrome, onShared }) {
   const { user } = useCurrentUser();
   const [view, setView] = useState("share");
   const [copied, setCopied] = useState(false);
@@ -38,25 +38,33 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
   const title = post.haul_title || "Check out this haul on Revex";
   const thumb = post.image_urls?.[0] || "";
 
-  const bumpShare = () => {
-    supabase.from('posts')
-      .update({ share_count: (post.share_count || 0) + 1 }).eq('id', post.id)
-      .then(() => {});
+  const bumpShare = async () => {
+    const nextCount = (post.share_count || 0) + 1;
+    const { data, error } = await supabase.from('posts')
+      .update({ share_count: nextCount })
+      .eq('id', post.id)
+      .eq('share_count', post.share_count || 0)
+      .select()
+      .single();
+    if (error) throw error;
+    onShared?.(data);
   };
 
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(url);
-      bumpShare();
+      await bumpShare();
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const shareTo = async (target) => {
     // Networks that publish a link-share intent get it directly.
     if (target.web) {
-      bumpShare();
+      await bumpShare();
       window.open(target.web(url, title), "_blank", "noopener,noreferrer");
       onClose();
       return;
@@ -66,7 +74,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
     if (navigator.share) {
       try {
         await navigator.share({ title, url });
-        bumpShare();
+        await bumpShare();
         onClose();
         return;
       } catch (e) {
@@ -75,7 +83,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
     }
     // No share sheet on this device: copy the link, open the app so it is one
     // paste away, and say so.
-    bumpShare();
+    await bumpShare();
     const fb = typeof target.fallbackUrl === "function" ? target.fallbackUrl(url) : target.fallbackUrl;
     if (fb) window.open(fb, "_blank", "noopener,noreferrer");
     try { await navigator.clipboard.writeText(url); } catch {}
