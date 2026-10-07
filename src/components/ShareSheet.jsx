@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { X, Link2, Check, Flag, Loader2, ShieldAlert, ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { recordPostShare } from "@/lib/postStats";
+import { X, Link2, Check, Flag, Loader2, ShieldAlert, ChevronLeft, Eye, EyeOff, Share2 } from "lucide-react";
 import SocialLogo from "@/components/SocialLogos";
 
 const REASONS = [
@@ -22,12 +23,15 @@ const TARGETS = [
   { key: "facebook", label: "Facebook", web: (u) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}` },
   { key: "telegram", label: "Telegram", web: (u, t) => `https://t.me/share/url?url=${encodeURIComponent(u)}&text=${encodeURIComponent(t)}` },
   { key: "tiktok", label: "TikTok", fallbackUrl: "https://www.tiktok.com/" },
+  { key: "other", label: "Other", native: true },
 ];
 
 export default function ShareSheet({ post, onClose, chromeVisible = true, onToggleChrome, onShared }) {
   const { user } = useCurrentUser();
   const [view, setView] = useState("share");
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const [shareFailed, setShareFailed] = useState("");
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
@@ -39,55 +43,108 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
   const thumb = post.image_urls?.[0] || "";
 
   const bumpShare = async () => {
-    const nextCount = (post.share_count || 0) + 1;
-    const { data, error } = await supabase.from('posts')
-      .update({ share_count: nextCount })
-      .eq('id', post.id)
-      .eq('share_count', post.share_count || 0)
-      .select()
-      .single();
-    if (error) throw error;
-    onShared?.(data);
+    if (!user?.id) return;
+    const updated = await recordPostShare(post.id);
+    if (!updated) throw new Error("Share count update did not return a post");
+    onShared?.(updated);
+  };
+
+  const writeLinkToClipboard = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        return true;
+      }
+    } catch {}
+
+    // Clipboard API can be unavailable in embedded browsers or non-secure contexts.
+    const field = document.createElement("textarea");
+    field.value = url;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    field.style.pointerEvents = "none";
+    document.body.appendChild(field);
+    field.focus();
+    field.select();
+    field.setSelectionRange(0, field.value.length);
+    let copiedSuccessfully = false;
+    try { copiedSuccessfully = document.execCommand("copy"); } catch {}
+    field.remove();
+    return copiedSuccessfully;
   };
 
   const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      await bumpShare();
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error(error);
+    const copiedSuccessfully = await writeLinkToClipboard();
+    if (!copiedSuccessfully) {
+      setCopied(false);
+      setCopyFailed(true);
+      return;
     }
+    setCopyFailed(false);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    bumpShare().catch((error) => console.error(error));
   };
 
   const shareTo = async (target) => {
-    // Networks that publish a link-share intent get it directly.
+    if (target.native) {
+      const payload = { title, text: title, url };
+      if (!window.isSecureContext || typeof navigator.share !== "function") {
+        setShareFailed("Your browser does not support the phone native share sheet. Open this page in Safari or Chrome.");
+        return;
+      }
+      if (navigator.canShare && !navigator.canShare(payload)) {
+        setShareFailed("This phone cannot share this post from the current browser.");
+        return;
+      }
+      setShareFailed("");
+      try {
+        // Call Web Share API during the tap to preserve OS user activation.
+        navigator.share(payload)
+          .then(() => { bumpShare().catch((error) => console.error(error)); onClose(); })
+          .catch((error) => {
+            if (error?.name !== "AbortError") {
+              console.error(error);
+              setShareFailed("The phone could not open its share sheet. Try opening this page in Safari or Chrome.");
+            }
+          });
+      } catch (error) {
+        console.error(error);
+        setShareFailed("The phone could not open its share sheet. Try opening this page in Safari or Chrome.");
+      }
+      return;
+    }
+
     if (target.web) {
       await bumpShare();
       window.open(target.web(url, title), "_blank", "noopener,noreferrer");
       onClose();
       return;
     }
-    // The rest hand off to the phone's own share sheet, which is the only way to
-    // share into an app that has no link-share intent of its own.
+
     if (navigator.share) {
       try {
-        await navigator.share({ title, url });
+        await navigator.share({ title, text: title, url });
         await bumpShare();
         onClose();
         return;
-      } catch (e) {
-        if (e?.name === "AbortError") return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
       }
     }
-    // No share sheet on this device: copy the link, open the app so it is one
-    // paste away, and say so.
-    await bumpShare();
-    const fb = typeof target.fallbackUrl === "function" ? target.fallbackUrl(url) : target.fallbackUrl;
-    if (fb) window.open(fb, "_blank", "noopener,noreferrer");
-    try { await navigator.clipboard.writeText(url); } catch {}
-    setHandoff(target.label);
+
+    const copiedSuccessfully = await writeLinkToClipboard();
+    if (copiedSuccessfully) {
+      setCopyFailed(false);
+      setCopied(true);
+      bumpShare().catch((error) => console.error(error));
+    } else {
+      setCopyFailed(true);
+    }
+    const fallback = typeof target.fallbackUrl === "function" ? target.fallbackUrl(url) : target.fallbackUrl;
+    if (fallback) window.open(fallback, "_blank", "noopener,noreferrer");
+    setHandoff(copiedSuccessfully ? target.label : "your apps");
     setTimeout(onClose, 2600);
   };
 
@@ -160,14 +217,14 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
 
               {/* Share targets */}
               <div className="grid grid-cols-4 gap-y-5 gap-x-2">
-                {TARGETS.map(({ key, label, web, fallbackUrl }) => (
+                {TARGETS.map(({ key, label, web, fallbackUrl, native }) => (
                   <button
                     key={key}
-                    onClick={() => shareTo({ web, label, fallbackUrl })}
+                    onClick={() => shareTo({ web, label, fallbackUrl, native })}
                     className="flex flex-col items-center gap-2"
                   >
                     <span className="w-14 h-14 rounded-full bg-white/10 border-2 border-white/25 flex items-center justify-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
-                      <SocialLogo name={key} className="w-7 h-7 text-white" />
+                      {key === "other" ? <Share2 className="w-7 h-7 text-white" /> : <SocialLogo name={key} className="w-7 h-7 text-white" />}
                     </span>
                     <span className="text-[10px] font-heading uppercase tracking-wide text-white/80">{label}</span>
                   </button>
@@ -193,6 +250,13 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
                   <span className="block text-[11px] text-white/50 truncate">{url}</span>
                 </span>
               </button>
+
+              {copyFailed && (
+                <p role="status" className="mt-2 text-xs text-white/70">
+                  Could not copy the link. Try “Other” to share it from your phone.
+                </p>
+              )}
+              {shareFailed && <p role="status" className="mt-2 text-xs text-white/70">{shareFailed}</p>}
 
               {/* Hide / show the content around the post */}
               {onToggleChrome && (

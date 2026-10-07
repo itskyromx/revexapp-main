@@ -30,10 +30,14 @@ export async function getBlockedIds(userId) {
 
 export async function getBlockDirection(userId, otherId) {
   if (!userId || !otherId) return null;
-  const [{ data: asBlocker }, { data: asBlocked }] = await Promise.all([
+  const [ownResult, incomingResult] = await Promise.all([
     supabase.from('blocks').select('id').eq('blocker_id', userId).eq('blocked_id', otherId),
     supabase.from('blocks').select('id').eq('blocker_id', otherId).eq('blocked_id', userId),
   ]);
+  if (ownResult.error) throw ownResult.error;
+  if (incomingResult.error) throw incomingResult.error;
+  const asBlocker = ownResult.data;
+  const asBlocked = incomingResult.data;
   if (asBlocker?.[0]) return "you";
   if (asBlocked?.[0]) return "them";
   return null;
@@ -59,28 +63,26 @@ export function isBlockedPair(blocks, userId, otherId) {
 }
 
 export async function setBlockRelationship(blockerId, blockedId) {
-  if (!blockerId || !blockedId || blockerId === blockedId) return;
-  const [{ data: existingAsBlocker }, { data: existingAsBlocked }] = await Promise.all([
+  if (!blockerId || !blockedId || blockerId === blockedId) return null;
+  const [{ data: ownBlocks, error: ownError }, { data: incomingBlocks, error: incomingError }] = await Promise.all([
     supabase.from('blocks').select('id').eq('blocker_id', blockerId).eq('blocked_id', blockedId),
     supabase.from('blocks').select('id').eq('blocker_id', blockedId).eq('blocked_id', blockerId),
   ]);
-  const existing = existingAsBlocker?.[0] || existingAsBlocked?.[0];
-  if (existing) {
-    const { error } = await supabase.from('blocks').delete().eq('id', existing.id);
-    if (error) throw error;
-  }
+  if (ownError) throw ownError;
+  if (incomingError) throw incomingError;
+  if (ownBlocks?.length) return 'you';
+  if (incomingBlocks?.length) return 'them';
   const { error } = await supabase.from('blocks').insert({ blocker_id: blockerId, blocked_id: blockedId });
   if (error) throw error;
   window.dispatchEvent(new Event('revex:block-changed'));
+  return 'you';
 }
 
 export async function clearBlockRelationship(blockerId, blockedId) {
   if (!blockerId || !blockedId || blockerId === blockedId) return;
-  const [{ data: existingAsBlocker }, { data: existingAsBlocked }] = await Promise.all([
-    supabase.from('blocks').select('id').eq('blocker_id', blockerId).eq('blocked_id', blockedId),
-    supabase.from('blocks').select('id').eq('blocker_id', blockedId).eq('blocked_id', blockerId),
-  ]);
-  const existing = existingAsBlocker?.[0] || existingAsBlocked?.[0];
+  const { data: existing, error: readError } = await supabase.from('blocks').select('id')
+    .eq('blocker_id', blockerId).eq('blocked_id', blockedId).maybeSingle();
+  if (readError) throw readError;
   if (!existing) return;
   const { error } = await supabase.from('blocks').delete().eq('id', existing.id);
   if (error) throw error;

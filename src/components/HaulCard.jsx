@@ -8,7 +8,7 @@ import { timeAgo, loadLiked, saveLiked } from "@/lib/revex";
 import { useAuth } from "@/lib/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
-import { updatePostCounter } from "@/lib/postStats";
+import { updatePostCounter, togglePostLike } from "@/lib/postStats";
 import BoostBadge from "@/components/BoostBadge";
 import PostOwnerActions from "@/components/PostOwnerActions";
 
@@ -55,6 +55,15 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
   useEffect(() => () => { if (burstTimer.current) clearTimeout(burstTimer.current); }, []);
 
   useEffect(() => {
+    if (!user?.id || !post.id) return;
+    let active = true;
+    supabase.from("post_likes").select("post_id").eq("post_id", post.id).eq("user_id", user.id).maybeSingle()
+      .then(({ data, error }) => { if (!error && active) setLiked(Boolean(data)); })
+      .catch((error) => console.error(error));
+    return () => { active = false; };
+  }, [post.id, user?.id]);
+
+  useEffect(() => {
     setLikeCount(post.like_count || 0);
     setSaveCount(post.bookmark_count || 0);
     setShareCount(post.share_count || 0);
@@ -62,9 +71,9 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
   const reconcilePost = async (updated) => {
     if (!updated) return;
-    setLikeCount(updated.like_count || 0);
-    setSaveCount(updated.bookmark_count || 0);
-    setShareCount(updated.share_count || 0);
+    if (updated.like_count != null) setLikeCount(updated.like_count);
+    if (updated.bookmark_count != null) setSaveCount(updated.bookmark_count);
+    if (updated.share_count != null) setShareCount(updated.share_count);
     onChanged?.(updated);
   };
 
@@ -74,13 +83,14 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
     setBusyAction("like");
     const likedSet = loadLiked();
     try {
-      const updated = await updatePostCounter(post.id, "like_count", next ? 1 : -1);
-      if (!updated) throw new Error("Like update did not return a post");
-      setLiked(next);
-      if (next) likedSet.add(post.id); else likedSet.delete(post.id);
+      const result = await togglePostLike(post.id);
+      if (!result) throw new Error("Like update did not return a result");
+      setLiked(result.liked);
+      if (result.liked) likedSet.add(post.id); else likedSet.delete(post.id);
       saveLiked(likedSet);
-      await reconcilePost(updated);
-      if (next && post.created_by_id) {
+      setLikeCount(result.like_count || 0);
+      onChanged?.({ id: post.id, like_count: result.like_count });
+      if (result.liked && post.created_by_id) {
         supabase.functions.invoke("sendNotification", { body: {
           recipientId: post.created_by_id,
           content: `liked your post "${post.haul_title}"`,
@@ -122,7 +132,10 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
     if (busyAction) return;
     setBusyAction("save");
     try {
-      const next = await toggleBookmark(user?.id, "post", post);
+      if (!user?.id) return;
+      const wasSaved = saved;
+      const next = await toggleBookmark(user.id, "post", post);
+      if (next === wasSaved) return;
       const updated = await updatePostCounter(post.id, "bookmark_count", next ? 1 : -1);
       if (!updated) throw new Error("Bookmark update did not return a post");
       await reconcilePost(updated);

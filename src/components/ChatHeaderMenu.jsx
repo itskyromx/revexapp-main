@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal, Trash2, Flag, Ban } from "lucide-react";
+import { MoreHorizontal, Trash2, Flag, Ban, UserRoundCheck } from "lucide-react";
 
 const ITEMS = [
   {
@@ -25,7 +25,7 @@ const ITEMS = [
   },
 ];
 
-export default function ChatHeaderMenu({ onDelete, onReport, onBlock }) {
+export default function ChatHeaderMenu({ onDelete, onReport, onBlock, blockState = null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -58,26 +58,40 @@ export default function ChatHeaderMenu({ onDelete, onReport, onBlock }) {
 
       {open && (
         <div className="absolute right-0 top-11 z-50 w-64 acid-card bg-card p-1.5">
-          {ITEMS.map(({ key, icon: Icon, label, desc, destructive }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => pick(key)}
-              className="w-full text-left flex gap-2 p-2 hover:bg-muted"
-            >
-              <Icon
-                className={`w-4 h-4 mt-0.5 shrink-0 ${destructive ? "text-brand-red" : "text-foreground"}`}
-              />
-              <span className="min-w-0">
-                <span
-                  className={`block font-heading font-bold uppercase text-xs ${destructive ? "text-brand-red" : "text-foreground"}`}
-                >
-                  {label}
+          {ITEMS.map((item) => {
+            const isBlockItem = item.key === "block";
+            const blockedByMe = isBlockItem && blockState === "you";
+            const blockedByThem = isBlockItem && blockState === "them";
+            const Icon = blockedByMe ? UserRoundCheck : item.icon;
+            const label = blockedByMe ? "Unblock user" : blockedByThem ? "Blocked you" : item.label;
+            const desc = blockedByMe
+              ? "Allow this person to message you and see your posts again."
+              : blockedByThem
+                ? "This person has blocked you."
+                : item.desc;
+            const destructive = item.destructive && !blockedByMe;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => pick(item.key)}
+                disabled={blockedByThem}
+                className="w-full text-left flex gap-2 p-2 hover:bg-muted disabled:opacity-60"
+              >
+                <Icon
+                  className={`w-4 h-4 mt-0.5 shrink-0 ${destructive ? "text-brand-red" : "text-foreground"}`}
+                />
+                <span className="min-w-0">
+                  <span
+                    className={`block font-heading font-bold uppercase text-xs ${destructive ? "text-brand-red" : "text-foreground"}`}
+                  >
+                    {label}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground leading-snug">{desc}</span>
                 </span>
-                <span className="block text-[11px] text-muted-foreground leading-snug">{desc}</span>
-              </span>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

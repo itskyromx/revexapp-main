@@ -1,6 +1,6 @@
 import { MessageCircle, Tag, Check, ShoppingBag, Package, UserPlus, Heart, X } from "lucide-react";
 import Avatar from "@/components/Avatar";
-import { timeAgo } from "@/lib/revex";
+import { timeAgoVerbose } from "@/lib/revex";
 
 const ICONS = {
   message: MessageCircle,
@@ -17,6 +17,7 @@ export default function ActivityRow({ notification, onOpen, onClear }) {
   const Icon = ICONS[notification.type] || MessageCircle;
   const unread = !notification.read;
   const showName = notification.actor_name && notification.actor_name !== notification.title;
+  const activityTime = timeAgoVerbose(notification.created_at || notification.created_date);
 
   return (
     <div className="relative flex items-center gap-3 py-3 pl-3 pr-1">
@@ -35,7 +36,7 @@ export default function ActivityRow({ notification, onOpen, onClear }) {
         )}
         <p className="text-sm truncate">{notification.title}</p>
         <p className="text-xs text-muted-foreground line-clamp-2">{notification.body}</p>
-        <p className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(notification.created_date)} ago</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">{activityTime ? `${activityTime} ago` : "Just now"}</p>
       </button>
 
       {notification.thumbnail && (

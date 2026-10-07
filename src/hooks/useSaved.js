@@ -56,8 +56,8 @@ export async function toggleSave(userId, kind, targetId) {
       const { error } = await supabase.from('saved').delete().eq('id', existing.id);
       if (error) throw error;
     } catch (e) {
-      console.error(e);
-      reload(userId);
+      await reload(userId);
+      throw e;
     }
     return false;
   }
@@ -72,8 +72,8 @@ export async function toggleSave(userId, kind, targetId) {
     rows = rows.map((r) => (r.id === tempId ? created : r));
     emit();
   } catch (e) {
-    console.error(e);
-    reload(userId);
+    await reload(userId);
+    throw e;
   }
   return true;
 }

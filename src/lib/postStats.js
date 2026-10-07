@@ -16,7 +16,7 @@ export async function refreshPostCounters(postIds) {
 
   const { data, error } = await supabase
     .from("posts")
-    .select("id, like_count, bookmark_count, view_count")
+    .select("id, like_count, bookmark_count, view_count, share_count")
     .in("id", ids);
 
   if (error) throw error;
@@ -38,28 +38,21 @@ export async function refreshPostCounters(postIds) {
  * } | null>}
  */
 export async function updatePostCounter(postId, counter, delta) {
-  if (!postId || !["like_count", "bookmark_count", "view_count"].includes(counter)) return null;
+  if (!postId || !["bookmark_count", "view_count", "share_count"].includes(counter)) return null;
   if (!Number.isInteger(delta) || delta === 0) return null;
 
-  const { data: current, error: readError } = await supabase
-    .from("posts")
-    .select("like_count, bookmark_count, view_count")
-    .eq("id", postId)
-    .single();
-  if (readError) throw readError;
+  const { data, error } = await supabase.rpc("increment_post_counter", {
+    p_post_id: postId,
+    p_counter: counter,
+    p_delta: delta,
+  });
+  if (error) throw error;
+  return data;
+}
 
-  const currentValue = counter === "like_count"
-    ? current.like_count
-    : counter === "bookmark_count"
-      ? current.bookmark_count
-      : current.view_count;
-  const nextValue = Math.max(0, (currentValue || 0) + delta);
-  const { data, error } = await supabase
-    .from("posts")
-    .update({ [counter]: nextValue })
-    .eq("id", postId)
-    .select("id, like_count, bookmark_count, view_count")
-    .single();
+export async function togglePostLike(postId) {
+  if (!postId) return null;
+  const { data, error } = await supabase.rpc("toggle_post_like", { p_post_id: postId });
   if (error) throw error;
   return data;
 }
@@ -93,4 +86,11 @@ export async function recordPostView(postId) {
     localStorage.setItem(key, JSON.stringify(viewed));
   }
   return updated;
+}
+
+export async function recordPostShare(postId) {
+  if (!postId) return null;
+  const { data, error } = await supabase.rpc("record_post_share", { p_post_id: postId });
+  if (error) throw error;
+  return data;
 }

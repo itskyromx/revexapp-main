@@ -93,8 +93,8 @@ export default function Watch() {
             <div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>
           ) : posts.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-6">
-              <p className="font-display text-2xl uppercase">No hauls yet</p>
-              <p className="text-sm text-white/70 mt-1">Drop the first haul.</p>
+              <p className="font-display text-2xl uppercase">No posts yet</p>
+              <p className="text-sm text-white/70 mt-1">Be the first to upload!</p>
             </div>
           ) : (
             <>

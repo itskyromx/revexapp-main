@@ -11,8 +11,8 @@ import ReportUserSheet from "@/components/ReportUserSheet";
 import MessageBubble from "@/components/MessageBubble";
 import MessageActionSheet from "@/components/MessageActionSheet";
 import { toast } from "@/components/ui/use-toast";
-import { formatPrice, toDate, displayName, timeAgo } from "@/lib/revex";
-import { clearChatHistory, getBlockRelationship, setBlockRelationship } from "@/lib/blocks";
+import { formatPrice, toDate, displayName, timeAgoVerbose } from "@/lib/revex";
+import { clearChatHistory, getBlockDirection, setBlockRelationship, clearBlockRelationship } from "@/lib/blocks";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -38,14 +38,20 @@ export default function Chat() {
   const [checkoutItem, setCheckoutItem] = useState(null);
   const [checkoutOffer, setCheckoutOffer] = useState(null);
   const [cantMessage, setCantMessage] = useState(false);
+  const [blockDirection, setBlockDirection] = useState(null);
   const [confirm, setConfirm] = useState("");
   const [showReport, setShowReport] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState(null);
   const [messageToAct, setMessageToAct] = useState(null);
   const [theirLastRead, setTheirLastRead] = useState(null);
   const [busyAction, setBusyAction] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
   const [, setTick] = useState(0);
   const endRef = useRef(null);
+  const clearedAtRef = useRef(null);
+  const typingTimerRef = useRef(null);
+  const typingIdleRef = useRef(null);
+  const typingChannelRef = useRef(null);
   const safeMessages = Array.isArray(messages) ? messages.filter(Boolean) : [];
 
   const load = async () => {
@@ -58,7 +64,7 @@ export default function Chat() {
         supabase.from('offers').select('*').eq('seller_id', userId).eq('buyer_id', me.id),
         supabase.from('offers').select('*').eq('buyer_id', userId).eq('seller_id', me.id),
         supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200),
-        getBlockRelationship(me.id, userId),
+        getBlockDirection(me.id, userId),
         supabase.from('chat_clears').select('*').eq('user_id', me.id).eq('other_id', userId),
         supabase.from('chat_reads').select('*').eq('user_id', userId).eq('other_id', me.id),
       ]);
@@ -68,15 +74,18 @@ export default function Chat() {
       const theirOffers = theirOffersRes.data || [];
       const myOffers = myOffersRes.data || [];
       const orders = ordersRes.data || [];
-      const blocked = blocksRes === true;
+      const blockState = blocksRes;
+      const blocked = Boolean(blockState);
       const clears = clearsRes.data || [];
       const theirReads = theirReadsRes.data || [];
       setOther(u);
       setTheirLastRead(theirReads[0]?.last_read_at || null);
       setOffers([...theirOffers, ...myOffers]);
       setPaidItemIds(orders.filter((o) => PAID_STATUSES.includes(o.status)).map((o) => o.item_id));
+      setBlockDirection(blockState);
       setCantMessage(blocked);
       const clearedAt = clears[0]?.cleared_at;
+      clearedAtRef.current = clearedAt || null;
       const conv = [...sent, ...received]
         .filter(Boolean)
         .filter((m) => !clearedAt || (m.created_at && toDate(m.created_at) > toDate(clearedAt)))
@@ -96,6 +105,56 @@ export default function Chat() {
   useEffect(() => { load(); }, [me, userId, itemId]);
 
   useEffect(() => {
+    if (!me?.id || !userId) return undefined;
+    const channel = supabase.channel(`chat-messages:${me.id}:${userId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `sender_id=eq.${userId}` }, ({ new: message }) => {
+        if (message?.receiver_id !== me.id || !message.id) return;
+        if (clearedAtRef.current && toDate(message.created_at) <= toDate(clearedAtRef.current)) return;
+        setMessages((current) => current.some((row) => row.id === message.id) ? current : [...current, message].sort((a, b) => toDate(a.created_at) - toDate(b.created_at)));
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `sender_id=eq.${me.id}` }, ({ new: message }) => {
+        if (message?.receiver_id !== userId || !message.id) return;
+        setMessages((current) => current.some((row) => row.id === message.id) ? current : [...current, message].sort((a, b) => toDate(a.created_at) - toDate(b.created_at)));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [me?.id, userId]);
+
+  useEffect(() => {
+    if (!me?.id || !userId) return undefined;
+    const pair = [me.id, userId].sort().join(':');
+    const channel = supabase.channel(`chat-typing:${pair}`, { config: { broadcast: { self: false } } });
+    channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
+      if (payload?.userId !== userId) return;
+      setOtherTyping(Boolean(payload.isTyping));
+      if (typingIdleRef.current) clearTimeout(typingIdleRef.current);
+      if (payload.isTyping) typingIdleRef.current = setTimeout(() => setOtherTyping(false), 2500);
+    }).subscribe();
+    typingChannelRef.current = channel;
+    return () => {
+      if (typingIdleRef.current) clearTimeout(typingIdleRef.current);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingChannelRef.current = null;
+      supabase.removeChannel(channel);
+    };
+  }, [me?.id, userId]);
+
+  const announceTyping = (value) => {
+    const channel = typingChannelRef.current;
+    if (!channel || !me?.id) return;
+    channel.send({ type: 'broadcast', event: 'typing', payload: { userId: me.id, isTyping: Boolean(value) } });
+  };
+
+  const handleTextChange = (value) => {
+    setText(value);
+    if (!value.trim() || cantMessage) { announceTyping(false); return; }
+    announceTyping(true);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => announceTyping(false), 1800);
+  };
+
+
+  useEffect(() => {
     const reload = () => load();
     window.addEventListener('revex:block-changed', reload);
     return () => window.removeEventListener('revex:block-changed', reload);
@@ -105,19 +164,38 @@ export default function Chat() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, offers]);
 
-  // Read receipt: opening the thread — or receiving a message while it's open —
-  // stamps when I last read this conversation.
+  // Advance the receipt only when a newer incoming message exists. Reopening
+  // messages that were already seen must preserve their original timestamp.
   useEffect(() => {
-    if (!me || !userId || loading) return;
-    const stamp = new Date().toISOString();
-    supabase.from('chat_reads').select('*').eq('user_id', me.id).eq('other_id', userId)
-      .then(({ data: rows }) =>
-        rows?.[0]
-          ? supabase.from('chat_reads').update({ last_read_at: stamp }).eq('id', rows[0].id)
-          : supabase.from('chat_reads').insert({ user_id: me.id, other_id: userId, last_read_at: stamp })
-      )
-      .catch(() => {});
-  }, [messages, loading, me, userId]);
+    if (!me || !userId || loading) return undefined;
+    const latestIncoming = safeMessages
+      .filter((message) => message.sender_id === userId && message.created_at)
+      .reduce((latest, message) => (
+        !latest || toDate(message.created_at) > toDate(latest.created_at) ? message : latest
+      ), null);
+    if (!latestIncoming) return undefined;
+
+    let active = true;
+    const markIncomingRead = async () => {
+      const { data: existing, error: readError } = await supabase.from('chat_reads')
+        .select('id,last_read_at').eq('user_id', me.id).eq('other_id', userId).maybeSingle();
+      if (readError) throw readError;
+      if (!active) return;
+
+      const incomingAt = toDate(latestIncoming.created_at);
+      const previouslyReadAt = toDate(existing?.last_read_at);
+      if (previouslyReadAt && incomingAt && previouslyReadAt >= incomingAt) return;
+
+      const stamp = new Date(Math.max(Date.now(), incomingAt?.getTime() || 0)).toISOString();
+      const result = existing
+        ? await supabase.from('chat_reads').update({ last_read_at: stamp }).eq('id', existing.id)
+        : await supabase.from('chat_reads').insert({ user_id: me.id, other_id: userId, last_read_at: stamp });
+      if (result.error) throw result.error;
+    };
+
+    markIncomingRead().catch((error) => console.error('Could not save read receipt', error));
+    return () => { active = false; };
+  }, [messages, loading, me?.id, userId]);
 
   // Their receipt arrives live, so the sender sees "Seen" without refreshing.
   useEffect(() => {
@@ -136,7 +214,7 @@ export default function Chat() {
 
   // Keeps the relative "Seen 5m ago" label ticking.
   useEffect(() => {
-    const timer = setInterval(() => setTick((n) => n + 1), 30000);
+    const timer = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -168,6 +246,7 @@ export default function Chat() {
         return [...safeCurrent, persistedMessage];
       });
       setText("");
+      announceTyping(false);
       supabase.functions.invoke('sendNotification', { body: {
         recipientId: userId,
         title: displayName(me) || me.email,
@@ -241,11 +320,31 @@ export default function Chat() {
     if (!me) return;
     setBusyAction(true);
     try {
-      await setBlockRelationship(me.id, userId);
-      setCantMessage(true);
-      navigate("/inbox");
+      const direction = await setBlockRelationship(me.id, userId);
+      setBlockDirection(direction);
+      setCantMessage(Boolean(direction));
+      if (direction === "you") navigate("/inbox");
+      else toast({ title: "User already blocked you", description: "You cannot change their block from your account." });
     } catch (e) {
       console.error(e);
+      toast({ title: "Couldn't block user", description: "Try again." });
+    } finally {
+      setBusyAction(false);
+      setConfirm("");
+    }
+  };
+
+  const unblockUser = async () => {
+    if (!me || blockDirection !== "you") return;
+    setBusyAction(true);
+    try {
+      await clearBlockRelationship(me.id, userId);
+      setBlockDirection(null);
+      setCantMessage(false);
+      toast({ title: "User unblocked" });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Couldn't unblock user", description: "Try again." });
     } finally {
       setBusyAction(false);
       setConfirm("");
@@ -285,12 +384,10 @@ export default function Chat() {
 
   // Delivered / Seen line — shown only under my most recent message.
   const lastMine = [...safeMessages].reverse().find((m) => m.sender_id === me?.id);
-  const seenAgo = theirLastRead ? timeAgo(theirLastRead) : "";
+  const seenAgo = theirLastRead ? timeAgoVerbose(theirLastRead) : "";
   const myStatus =
     lastMine && theirLastRead && lastMine.created_at && toDate(theirLastRead) >= toDate(lastMine.created_at)
-      ? /^\d+[smhd]$/.test(seenAgo)
-        ? `Seen ${seenAgo} ago`
-        : `Seen ${seenAgo}`
+      ? "Seen " + seenAgo + " ago"
       : "Delivered";
 
   const otherName =
@@ -319,7 +416,8 @@ export default function Chat() {
           <ChatHeaderMenu
             onDelete={() => setConfirm("delete")}
             onReport={() => setShowReport(true)}
-            onBlock={() => setConfirm("block")}
+            blockState={blockDirection}
+            onBlock={() => setConfirm(blockDirection === "you" ? "unblock" : "block")}
           />
         </div>
       </header>
@@ -336,6 +434,7 @@ export default function Chat() {
 
       <div className="flex-1 overflow-y-auto max-w-md mx-auto w-full p-3 space-y-2">
         {timeline.length === 0 && <p className="text-center text-muted-foreground text-sm mt-8">Say hi 👋 — arrange shipping & payment here.</p>}
+        {otherTyping && <p className="text-xs text-muted-foreground px-2 py-1" aria-live="polite">{otherName} is typing…</p>}
         {timeline.map((row) => {
           if (row.kind === "offer") {
             const o = row.data;
@@ -380,7 +479,8 @@ export default function Chat() {
           <div className="max-w-md mx-auto flex items-center gap-2 p-2">
             <input
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => handleTextChange(e.target.value)}
+              onBlur={() => announceTyping(false)}
               onKeyDown={(e) => e.key === "Enter" && send()}
               placeholder="Type a message..."
               className="acid-input flex-1"
@@ -433,20 +533,23 @@ export default function Chat() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirm === "block"} onOpenChange={(open) => { if (!open) setConfirm(""); }}>
+      <AlertDialog open={confirm === "block" || confirm === "unblock"} onOpenChange={(open) => { if (!open) setConfirm(""); }}>
         <AlertDialogContent className="border-[3px] border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display uppercase">Block {otherName}?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display uppercase">
+              {confirm === "unblock" ? "Unblock" : "Block"} {otherName}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              They won't be able to message you, you won't see their posts, and they won't see yours.
-              You can unblock them any time from their profile.
+              {confirm === "unblock"
+                ? "They will be able to message you and see your posts again."
+                : "They won't be able to message you, you won't see their posts, and they won't see yours. You can unblock them any time."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busyAction}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={blockUser} disabled={busyAction}
+            <AlertDialogAction onClick={confirm === "unblock" ? unblockUser : blockUser} disabled={busyAction}
               className="bg-brand-red text-white border-[3px] border-border font-display uppercase">
-              {busyAction ? "Blocking…" : "Block user"}
+              {busyAction ? (confirm === "unblock" ? "Unblocking…" : "Blocking…") : (confirm === "unblock" ? "Unblock user" : "Block user")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

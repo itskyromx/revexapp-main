@@ -76,6 +76,20 @@ export function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 
+export function timeAgoVerbose(dateStr) {
+  if (!dateStr) return "";
+  const date = toDate(dateStr);
+  if (!date) return "";
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return `${Math.max(1, seconds)} sec`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hr`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)} day`;
+  if (seconds < 2592000) return `${Math.floor(seconds / 604800)} week`;
+  if (seconds < 31536000) return `${Math.floor(seconds / 2592000)} month`;
+  return `${Math.floor(seconds / 31536000)} year`;
+}
+
 export function loadLiked() {
   try { return new Set(JSON.parse(localStorage.getItem("revex_liked") || "[]")); }
   catch { return new Set(); }

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, UserPlus, UserCheck, Package, ShoppingBag, Settings as SettingsIcon, FileText, ShieldAlert, Truck, Ban, Lock, Bookmark } from "lucide-react";
-import { getBlockedIds, hideBlocked, clearBlockRelationship } from "@/lib/blocks";
+import { ArrowLeft, UserPlus, UserCheck, Package, ShoppingBag, Settings as SettingsIcon, FileText, ShieldAlert, Truck, Ban, Lock, Bookmark, MoreHorizontal, Flag } from "lucide-react";
+import { getBlockedIds, hideBlocked, clearBlockRelationship, getBlockDirection, setBlockRelationship } from "@/lib/blocks";
 import { displayName } from "@/lib/revex";
 import Avatar from "@/components/Avatar";
 import ItemCard from "@/components/ItemCard";
@@ -19,6 +19,8 @@ import { toggleBookmark } from "@/lib/bookmarks";
 import FollowListSheet from "@/components/FollowListSheet";
 import ProfileWarningBanner from "@/components/ProfileWarningBanner";
 import SellerRatingSummary from "@/components/SellerRatingSummary";
+import ReportUserSheet from "@/components/ReportUserSheet";
+import { toast } from "@/components/ui/use-toast";
 
 export default function Profile() {
   const { userId } = useParams();
@@ -39,7 +41,12 @@ export default function Profile() {
   const [followError, setFollowError] = useState("");
   const [blocked, setBlocked] = useState(null);
   const [blockedByThem, setBlockedByThem] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [busyBlock, setBusyBlock] = useState(false);
   const { isSaved } = useSaved(me?.id);
+  const isSelf = me && targetId === me.id;
+  const isBlockedRelationship = Boolean(blocked || blockedByThem);
 
   useEffect(() => {
     if (!targetId) return;
@@ -48,23 +55,23 @@ export default function Profile() {
       try {
         const { data: u } = await supabase.from('profiles').select('*').eq('id', targetId).single();
         setProfile(u);
-        const [psRes, itsRes, flsRes, fingRes, blksRes, blockedIds] = await Promise.all([
+        const [psRes, itsRes, flsRes, fingRes, blockDirection, blockedIds] = await Promise.all([
           supabase.from('posts').select('*').eq('created_by_id', targetId),
           supabase.from('items').select('*').eq('created_by_id', targetId),
           supabase.from('follows').select('*').eq('followee_id', targetId),
           supabase.from('follows').select('*').eq('follower_id', targetId),
-          supabase.from('blocks').select('*').order('created_at', { ascending: false }).limit(200),
+          me && me.id !== targetId ? getBlockDirection(me.id, targetId) : Promise.resolve(null),
           getBlockedIds(me?.id)
         ]);
         const ps = psRes.data || [];
         const its = itsRes.data || [];
         const fls = flsRes.data || [];
         const fing = fingRes.data || [];
-        const blks = blksRes.data || [];
+        const blockState = blockDirection;
         setPosts(hideBlocked(ps, blockedIds));
         setItems(hideBlocked(its, blockedIds));
-        setBlocked(blks.find((b) => b.blocker_id === me?.id && b.blocked_id === targetId) || null);
-        setBlockedByThem(blks.find((b) => b.blocker_id === targetId && b.blocked_id === me?.id) || null);
+        setBlocked(blockState === "you");
+        setBlockedByThem(blockState === "them");
         setFollowers(fls.length);
         setFollowing(fing.length);
         setFollowerFollows(fls);
@@ -78,15 +85,30 @@ export default function Profile() {
     const reload = () => {
       if (!targetId) return;
       const load = async () => {
-        const { data: blks } = await supabase.from('blocks').select('*').order('created_at', { ascending: false }).limit(200);
-        setBlocked(blks?.find((b) => b.blocker_id === me?.id && b.blocked_id === targetId) || null);
-        setBlockedByThem(blks?.find((b) => b.blocker_id === targetId && b.blocked_id === me?.id) || null);
+        const direction = me?.id ? await getBlockDirection(me.id, targetId) : null;
+        setBlocked(direction === "you");
+        setBlockedByThem(direction === "them");
       };
       load().catch((error) => console.error(error));
     };
     window.addEventListener('revex:block-changed', reload);
     return () => window.removeEventListener('revex:block-changed', reload);
   }, [targetId, me?.id]);
+
+  useEffect(() => {
+    if (!me?.id || !targetId || isSelf) return undefined;
+    const refresh = async () => {
+      const direction = await getBlockDirection(me.id, targetId);
+      setBlocked(direction === "you");
+      setBlockedByThem(direction === "them");
+      if (direction) setIsFollowing(false);
+    };
+    const channel = supabase.channel("profile-blocks:" + [me.id, targetId].sort().join(":"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "blocks", filter: "blocker_id=eq." + me.id }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "blocks", filter: "blocker_id=eq." + targetId }, refresh)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [me?.id, targetId, isSelf]);
 
   const reloadPosts = async () => {
     const { data: ps } = await supabase.from('posts').select('*').eq('created_by_id', targetId);
@@ -106,6 +128,8 @@ export default function Profile() {
 
   const toggleFollow = async () => {
     if (!me || !targetId || isBlockedRelationship) return;
+    const freshDirection = await getBlockDirection(me.id, targetId);
+    if (freshDirection) { setBlocked(freshDirection === "you"); setBlockedByThem(freshDirection === "them"); return; }
     const next = !isFollowing;
     setFollowError("");
     setIsFollowing(next);
@@ -139,6 +163,32 @@ export default function Profile() {
     }
   };
 
+
+  const openProfileChat = async () => {
+    if (!me || !targetId || isBlockedRelationship) return;
+    const direction = await getBlockDirection(me.id, targetId);
+    if (direction) { setBlocked(direction === "you"); setBlockedByThem(direction === "them"); return; }
+    navigate("/chat/" + targetId);
+  };
+
+  const blockProfileUser = async () => {
+    if (!me || !targetId || busyBlock) return;
+    setBusyBlock(true);
+    try {
+      const direction = await setBlockRelationship(me.id, targetId);
+      setBlocked(direction === "you"); setBlockedByThem(direction === "them");
+      if (direction === "you") {
+        if (isFollowing || followerFollows.some((row) => row.follower_id === me.id)) setFollowers((n) => Math.max(0, n - 1));
+        if (followingFollows.some((row) => row.followee_id === me.id)) setFollowing((n) => Math.max(0, n - 1));
+        setIsFollowing(false);
+        setFollowerFollows((rows) => rows.filter((row) => row.follower_id !== me.id));
+        setFollowingFollows((rows) => rows.filter((row) => row.followee_id !== me.id));
+        toast({ title: "User blocked", description: "You both no longer follow each other." });
+      }
+    } catch (error) { console.error(error); toast({ title: "Couldn't block user", description: "Try again." }); }
+    finally { setBusyBlock(false); setMenuOpen(false); }
+  };
+
   const openList = (kind) => {
     const src = kind === "fans" ? followerFollows : followingFollows;
     const ids = src
@@ -157,8 +207,6 @@ export default function Profile() {
     });
   };
 
-  const isSelf = me && targetId === me.id;
-  const isBlockedRelationship = Boolean(blocked || blockedByThem);
   const name = displayName(profile) || "Creator";
   const locked = Boolean(profile?.private_account) && !isSelf && !isFollowing;
 
@@ -174,7 +222,8 @@ export default function Profile() {
             Sign in
           </button>
         </div>
-        <BottomNav />
+        {showReport && me && <ReportUserSheet targetId={targetId} name={name} me={me} onClose={() => setShowReport(false)} />}
+      <BottomNav />
       </div>
     );
   }
@@ -187,7 +236,16 @@ export default function Profile() {
         actions={(
           <div className="flex items-center gap-2">
             {userId && (
-              <button onClick={() => navigate(-1)} aria-label="Go back" className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center"><ArrowLeft className="w-5 h-5" /></button>
+              <>
+                <button onClick={() => navigate(-1)} aria-label="Go back" className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center"><ArrowLeft className="w-5 h-5" /></button>
+                {!isSelf && me && <div className="relative">
+                  <button onClick={() => setMenuOpen((open) => !open)} aria-label="Profile options" aria-expanded={menuOpen} className="sticker bg-card w-9 h-9 rounded-full flex items-center justify-center"><MoreHorizontal className="w-5 h-5" /></button>
+                  {menuOpen && <div className="absolute right-0 top-11 z-50 w-56 acid-card bg-card p-1.5">
+                    <button disabled={busyBlock || blockedByThem} onClick={blocked ? unblock : blockProfileUser} className="w-full flex items-center gap-2 p-2 text-left hover:bg-muted disabled:opacity-50"><Ban className="w-4 h-4" /><span className="font-heading font-bold uppercase text-xs">{blockedByThem ? "Blocked you" : blocked ? "Unblock user" : "Block user"}</span></button>
+                    <button onClick={() => { setMenuOpen(false); setShowReport(true); }} className="w-full flex items-center gap-2 p-2 text-left hover:bg-muted"><Flag className="w-4 h-4" /><span className="font-heading font-bold uppercase text-xs">Report user</span></button>
+                  </div>}
+                </div>}
+              </>
             )}
             {isSelf && (
               <>
@@ -264,7 +322,7 @@ export default function Profile() {
               </> :
               <>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button onClick={() => navigate(`/chat/${targetId}`)} className="acid-btn bg-foreground text-background">
+                  <button onClick={openProfileChat} disabled={isBlockedRelationship} className="acid-btn bg-foreground text-background disabled:opacity-50">
                     <UserPlus className="w-4 h-4" /> Message
                   </button>
                   <button onClick={toggleFollow} disabled={isBlockedRelationship} className={`acid-btn ${isFollowing ? "bg-muted text-foreground" : "bg-brand-red text-white"}`}>

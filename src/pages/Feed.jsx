@@ -6,6 +6,7 @@ import HaulCard from "@/components/HaulCard";
 import { Loader2 } from "lucide-react";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 import { enrichPostCreators } from "@/lib/profileData";
+import { refreshPostCounters } from "@/lib/postStats";
 
 // Kept for the life of the app session: coming back to the feed reuses the posts
 // already loaded instead of refetching and reordering them.
@@ -56,6 +57,23 @@ export default function Feed() {
   useEffect(() => {
     if (!isDesktop && !feedCache) fetchFeed();
   }, [fetchFeed, isDesktop]);
+
+  // Reconcile cached cards with the database after returning from a haul detail.
+  useEffect(() => {
+    if (!feedCache?.posts?.length) return undefined;
+    let active = true;
+    refreshPostCounters(feedCache.posts.map((post) => post.id))
+      .then((counters) => {
+        if (!active) return;
+        setPosts((current) => {
+          const refreshed = current.map((post) => ({ ...post, ...(counters[post.id] || {}) }));
+          feedCache = { ...feedCache, posts: refreshed };
+          return refreshed;
+        });
+      })
+      .catch((error) => console.error("Could not refresh feed counters", error));
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const refresh = () => {
@@ -120,8 +138,8 @@ export default function Feed() {
         </div>
       ) : posts.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center px-8 text-center">
-          <p className="font-display text-2xl uppercase text-white mb-1">No hauls yet</p>
-          <p className="text-sm text-white/70">Be the first to drop a haul — hit Create.</p>
+          <p className="font-display text-2xl uppercase text-white mb-1">No posts yet</p>
+          <p className="text-sm text-white/70">Be the first to upload!</p>
         </div>
       ) : (
         <div
@@ -133,6 +151,13 @@ export default function Feed() {
             <div key={p.id} className="h-[100dvh] w-full snap-start">
               <HaulCard
                 post={p}
+                onChanged={(updated) => {
+                  setPosts((current) => {
+                    const next = current.map((item) => item.id === updated.id ? { ...item, ...updated } : item);
+                    feedCache = { ...(feedCache || {}), posts: next };
+                    return next;
+                  });
+                }}
                 chromeVisible={chrome}
                 onToggleChrome={() => setChrome((v) => !v)}
                 onOpenProfile={(uid) => navigate(`/profile/${uid}`)}
