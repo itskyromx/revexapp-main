@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
-import { CURATED_TAGS, CURATED_BRANDS, normalizeTags } from "@/lib/revex";
+import { CURATED_TAGS, CURATED_BRANDS } from "@/lib/revex";
 import { Loader2, Check, Plus } from "lucide-react";
 
 export default function Onboarding() {
@@ -10,6 +10,7 @@ export default function Onboarding() {
   const [brands, setBrands] = useState([]);
   const [brandInput, setBrandInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const toggle = (value, list, setter) => {
     const key = value.toLowerCase();
@@ -32,15 +33,23 @@ export default function Onboarding() {
 
   const handleSubmit = async () => {
     setSaving(true);
+    setSubmitError("");
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('profiles')
+      if (!user) throw new Error("Please sign in again to finish setting up your account.");
+      const { data: profile, error } = await supabase
+        .from("profiles")
         .update({ style_preferences: styles, favorite_brands: brands })
-        .eq('id', user.id);
+        .eq("id", user.id)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
-      navigate("/", { replace: true });
+      if (!profile) throw new Error("We couldn't save your preferences. Please try again.");
+      navigate("/");
     } catch (e) {
       console.error(e);
+      setSubmitError(e.message || "Couldn't finish setting up your account. Please try again.");
+    } finally {
       setSaving(false);
     }
   };
@@ -50,10 +59,11 @@ export default function Onboarding() {
       <header className="px-5 pt-10 pb-6 border-b-[3px] border-white/10">
         <p className="acid-label text-white/50 mb-1">Welcome to Revex</p>
         <h1 className="font-display text-4xl uppercase leading-[0.95]">Tell us your vibe</h1>
-        <p className="text-sm text-white/60 mt-2 font-body">Pick what you're into so we can fill your feed with hauls you'll actually love.</p>
+        <p className="text-sm text-white/60 mt-2 font-body">Pick what you're into so we can fill your feed with posts you'll actually love.</p>
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-6 pb-32 no-scrollbar">
+
         {/* Styles */}
         <section>
           <div className="flex items-baseline justify-between mb-3">
@@ -130,8 +140,9 @@ export default function Onboarding() {
       {/* Sticky submit */}
       <div className="fixed bottom-0 inset-x-0 bg-black border-t-[3px] border-white/10 px-5 py-4">
         <div className="max-w-md mx-auto">
+          {submitError && <p role="alert" className="text-center text-sm text-red-400 mb-2">{submitError}</p>}
           <p className="text-center text-[10px] font-heading uppercase text-white/40 mb-2">
-            {styles.length > 0 ? "Looking good" : "Pick at least one style to continue"}
+            {styles.length > 0 ? "Looking good!" : "Pick at least one style to continue"}
           </p>
           <button
             disabled={!canSubmit}

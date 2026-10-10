@@ -43,6 +43,7 @@ export default function Login() {
       icon={LogIn}
       title="Welcome back"
       subtitle="Log in to your account"
+      showBack
       footer={
         <>
           Don't have an account?{" "}

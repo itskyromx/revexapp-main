@@ -116,6 +116,53 @@ export default function Chat() {
         if (message?.receiver_id !== userId || !message.id) return;
         setMessages((current) => current.some((row) => row.id === message.id) ? current : [...current, message].sort((a, b) => toDate(a.created_at) - toDate(b.created_at)));
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_message_deletions', filter: `sender_id=eq.${me.id}` }, ({ new: deletion }) => {
+        if (deletion?.receiver_id !== userId || !deletion.message_id) return;
+        setMessages((current) => current.filter((message) => message.id !== deletion.message_id));
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_message_deletions', filter: `receiver_id=eq.${me.id}` }, ({ new: deletion }) => {
+        if (deletion?.sender_id !== userId || !deletion.message_id) return;
+        setMessages((current) => current.filter((message) => message.id !== deletion.message_id));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [me?.id, userId]);
+
+  useEffect(() => {
+    if (!me?.id || !userId) return undefined;
+    const applyBlock = (direction) => {
+      setBlockDirection(direction);
+      setCantMessage(true);
+      setText("");
+      setOtherTyping(false);
+    };
+    const channel = supabase.channel(`chat-blocks:${me.id}:${userId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'blocks', filter: `blocker_id=eq.${me.id}`,
+      }, ({ new: row }) => {
+        if (row?.blocked_id === userId) applyBlock("you");
+      })
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'blocks', filter: `blocked_id=eq.${me.id}`,
+      }, ({ new: row }) => {
+        if (row?.blocker_id === userId) applyBlock("them");
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [me?.id, userId]);
+
+  useEffect(() => {
+    if (!me?.id || !userId) return undefined;
+    const channel = supabase.channel(`chat-clears:${me.id}:${userId}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'chat_clears', filter: `user_id=eq.${me.id}`,
+      }, ({ new: clear }) => {
+        if (clear?.other_id !== userId || !clear.cleared_at) return;
+        clearedAtRef.current = clear.cleared_at;
+        setMessages((current) => current.filter((message) => (
+          message.created_at && toDate(message.created_at) > toDate(clear.cleared_at)
+        )));
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [me?.id, userId]);
@@ -221,7 +268,6 @@ export default function Chat() {
   const send = async () => {
     if (!text.trim() || !me || cantMessage || sending) return;
     const body = text.trim();
-    const sentAt = new Date().toISOString();
     setSending(true);
 
     try {
@@ -232,7 +278,6 @@ export default function Chat() {
           receiver_id: userId,
           sender_name: displayName(me) || me.email,
           text: body,
-          created_at: sentAt,
           item_id: itemId || null,
           item_title: item?.title || null,
         })
@@ -367,10 +412,18 @@ export default function Chat() {
     const id = messageToDelete.id;
     setBusyAction(true);
     try {
-      await supabase.from('chat_messages').delete().eq('id', id);
+      const { data: deletedMessage, error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!deletedMessage) throw new Error("Messages can't be deleted after the other user has replied.");
       setMessages((m) => m.filter((x) => x.id !== id));
     } catch (e) {
       console.error(e);
+      toast({ title: "Couldn't delete message", description: e.message || "Try again." });
     } finally {
       setBusyAction(false);
       setMessageToDelete(null);
@@ -395,6 +448,12 @@ export default function Chat() {
     safeMessages.find((m) => m.sender_id === userId)?.sender_name ||
     offers.find((o) => o.buyer_id === userId)?.buyer_name ||
     "User";
+
+  const messageToActHasReply = Boolean(messageToAct && safeMessages.some((message) => (
+    message.sender_id === messageToAct.receiver_id &&
+    message.receiver_id === messageToAct.sender_id &&
+    toDate(message.created_at) >= toDate(messageToAct.created_at)
+  )));
 
   if (loading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -434,7 +493,6 @@ export default function Chat() {
 
       <div className="flex-1 overflow-y-auto max-w-md mx-auto w-full p-3 space-y-2">
         {timeline.length === 0 && <p className="text-center text-muted-foreground text-sm mt-8">Say hi 👋 — arrange shipping & payment here.</p>}
-        {otherTyping && <p className="text-xs text-muted-foreground px-2 py-1" aria-live="polite">{otherName} is typing…</p>}
         {timeline.map((row) => {
           if (row.kind === "offer") {
             const o = row.data;
@@ -465,6 +523,7 @@ export default function Chat() {
           );
         })}
         <div ref={endRef} />
+        {otherTyping && <p className="text-xs text-muted-foreground px-2 py-1" aria-live="polite">{otherName} is typing…</p>}
       </div>
 
       <div className="border-t-[4px] border-border bg-card shrink-0">
@@ -507,6 +566,7 @@ export default function Chat() {
       <MessageActionSheet
         message={messageToAct}
         mine={messageToAct?.sender_id === me?.id}
+        canDelete={!messageToActHasReply}
         onCopy={() => copyMessage(messageToAct)}
         onDelete={() => {
           setMessageToDelete(messageToAct);

@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { supabase } from "@/api/supabaseClient";
-import { Check, Loader2, LogOut } from "lucide-react";
-import { useAuth } from "@/lib/useAuth";
+import { Check, Loader2 } from "lucide-react";
 import { toDate } from "@/lib/revex";
 import DeleteAccountCard from "@/components/settings/DeleteAccountCard";
 
 export default function SecuritySection({ user }) {
-  const { logout } = useAuth();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -99,10 +97,6 @@ export default function SecuritySection({ user }) {
           {done && !busy ? "Password updated" : "Update password"}
         </button>
       </div>
-
-      <button onClick={() => logout(true)} className="acid-btn bg-muted text-foreground w-full">
-        <LogOut className="w-4 h-4" /> Log out
-      </button>
 
       <DeleteAccountCard />
     </div>

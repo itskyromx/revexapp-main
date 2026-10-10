@@ -4,14 +4,18 @@ import { supabase } from "@/api/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
+import { UserPlus, Mail, Lock, Loader2, User } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { isUsernameAvailable, isValidUsername, normalizeUsername } from "@/lib/usernames";
+
+const SIGNUP_OTP_LENGTH = 6;
 
 export default function Register() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -19,17 +23,35 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!acceptedLegal) {
+      setError("Please read and agree to the Terms and Conditions and Privacy Policy.");
+      return;
+    }
+    const normalizedUsername = normalizeUsername(username);
+    if (!isValidUsername(normalizedUsername)) {
+      setError("Username must be 3–20 characters, using letters, numbers, and underscores. It can't start or end with an underscore.");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      if (!await isUsernameAvailable(supabase, normalizedUsername)) {
+        setError("That username is already taken. Choose another one.");
+        return;
+      }
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { username: normalizedUsername } },
+      });
       if (error) throw error;
       setShowOtp(true);
     } catch (err) {
@@ -68,6 +90,10 @@ export default function Register() {
   };
 
   const handleGoogle = async () => {
+    if (!acceptedLegal) {
+      setError("Please read and agree to the Terms and Conditions and Privacy Policy.");
+      return;
+    }
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}${safeReturnTo()}` },
@@ -79,7 +105,8 @@ export default function Register() {
       <AuthLayout
         icon={Mail}
         title="Verify your email"
-        subtitle={`We sent a code to ${email}`}
+        subtitle={`We sent a 6-digit code to ${email}`}
+        showBack
       >
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -88,26 +115,23 @@ export default function Register() {
         )}
         <div className="flex justify-center mb-6">
           <InputOTP
-            maxLength={6}
+            maxLength={SIGNUP_OTP_LENGTH}
             value={otpCode}
             onChange={setOtpCode}
             autoFocus
             autoComplete="one-time-code"
           >
             <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
+              {Array.from({ length: SIGNUP_OTP_LENGTH }, (_, index) => (
+                <InputOTPSlot key={index} index={index} />
+              ))}
             </InputOTPGroup>
           </InputOTP>
         </div>
         <Button
           className="w-full h-12 font-medium"
           onClick={handleVerify}
-          disabled={loading || otpCode.length < 6}
+          disabled={loading || otpCode.length !== SIGNUP_OTP_LENGTH}
         >
           {loading ? (
             <>
@@ -133,6 +157,7 @@ export default function Register() {
       icon={UserPlus}
       title="Create your account"
       subtitle="Sign up to get started"
+      showBack
       footer={
         <>
           Already have an account?{" "}
@@ -170,6 +195,26 @@ export default function Register() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="your_username"
+              value={username}
+              onChange={(e) => setUsername(normalizeUsername(e.target.value).replace(/[^a-z0-9_]/g, "").slice(0, 20))}
+              className="pl-10 h-12"
+              minLength={3}
+              maxLength={20}
+              required
+            />
+          </div>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <div className="relative">
@@ -218,6 +263,25 @@ export default function Register() {
               required
             />
           </div>
+        </div>
+        <div className="flex items-start gap-3 text-sm leading-5">
+          <input
+            id="accepted-legal"
+            type="checkbox"
+            required
+            checked={acceptedLegal}
+            onChange={(e) => setAcceptedLegal(e.target.checked)}
+            className="mt-1 h-4 w-4 shrink-0 accent-primary"
+          />
+          <label htmlFor="accepted-legal" className="text-muted-foreground">
+            Read and agree with the{" "}
+            <Link to="/terms-and-conditions" className="text-primary font-medium underline underline-offset-2">
+              Terms and Conditions
+            </Link>{" "}&amp;{" "}
+            <Link to="/privacy-policy" className="text-primary font-medium underline underline-offset-2">
+              Privacy Policy
+            </Link>
+          </label>
         </div>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (

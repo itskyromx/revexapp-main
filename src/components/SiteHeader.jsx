@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 
@@ -11,13 +12,24 @@ const NAV_ITEMS = [
 export default function SiteHeader({ actions, context }) {
   const { pathname } = useLocation();
   const isHome = pathname === "/home" || pathname === "/";
+  const [isMobile, setIsMobile] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  ));
   const activeKey = NAV_ITEMS.find(({ key }) => pathname.startsWith(`/${key}`))?.key;
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const updateViewport = (event) => setIsMobile(event.matches);
+    setIsMobile(media.matches);
+    media.addEventListener("change", updateViewport);
+    return () => media.removeEventListener("change", updateViewport);
+  }, []);
 
   return (
     <header className="sticky top-0 z-30 border-b-[4px] border-border bg-background">
       <div className="max-w-6xl mx-auto flex items-center gap-4 px-4 h-14">
         <Link
-          to="/home"
+          to={isMobile ? "/" : "/home"}
           aria-current={isHome ? "page" : undefined}
           className="font-display text-xl uppercase tracking-tight"
         >

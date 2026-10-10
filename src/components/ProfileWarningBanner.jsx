@@ -38,9 +38,9 @@ export default function ProfileWarningBanner({ userId }) {
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-5 h-5 text-brand-red shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="font-display uppercase text-sm text-brand-red">Haul removed</p>
+              <p className="font-display uppercase text-sm text-brand-red">Post removed</p>
               <p className="text-xs mt-1">
-                "{w.haul_title || "A haul"}" was removed for breaking our rules — {w.rule}.
+                "{w.haul_title || "A Post"}" was removed for breaking our rules — {w.rule}.
               </p>
             </div>
             <button onClick={() => dismiss(w.id)} aria-label="Dismiss warning" className="shrink-0 text-muted-foreground">

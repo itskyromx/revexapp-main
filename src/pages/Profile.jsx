@@ -110,6 +110,37 @@ export default function Profile() {
     return () => supabase.removeChannel(channel);
   }, [me?.id, targetId, isSelf]);
 
+  useEffect(() => {
+    if (!targetId) return undefined;
+    let active = true;
+    const refreshFollowLists = async () => {
+      const [fansRes, followingRes] = await Promise.all([
+        supabase.from("follows").select("*").eq("followee_id", targetId),
+        supabase.from("follows").select("*").eq("follower_id", targetId),
+      ]);
+      if (!active) return;
+      const fans = fansRes.data || [];
+      const follows = followingRes.data || [];
+      setFollowerFollows(fans);
+      setFollowingFollows(follows);
+      setFollowers(fans.length);
+      setFollowing(follows.length);
+      if (me?.id) setIsFollowing(fans.some((row) => row.follower_id === me.id));
+    };
+    const channel = supabase.channel("profile-follows:" + targetId)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "follows", filter: "followee_id=eq." + targetId,
+      }, refreshFollowLists)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "follows", filter: "follower_id=eq." + targetId,
+      }, refreshFollowLists)
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [targetId, me?.id]);
+
   const reloadPosts = async () => {
     const { data: ps } = await supabase.from('posts').select('*').eq('created_by_id', targetId);
     setPosts(hideBlocked(ps || [], await getBlockedIds(me?.id)));
@@ -139,9 +170,20 @@ export default function Profile() {
         targetId,
         action: next ? "follow" : "unfollow",
       }});
+      if (res.error) throw res.error;
+      const [fansRes, followingRes] = await Promise.all([
+        supabase.from("follows").select("*").eq("followee_id", targetId),
+        supabase.from("follows").select("*").eq("follower_id", targetId),
+      ]);
+      const fans = fansRes.data || [];
+      const follows = followingRes.data || [];
+      setFollowerFollows(fans);
+      setFollowingFollows(follows);
+      setFollowers(fans.length);
+      setFollowing(follows.length);
+      setIsFollowing(fans.some((row) => row.follower_id === me.id));
       if (res.data?.blocked) {
         setIsFollowing(false);
-        setFollowers((n) => Math.max(0, n - 1));
         setFollowError("You can't follow this person.");
       }
     } catch (e) {
@@ -190,22 +232,18 @@ export default function Profile() {
   };
 
   const openList = (kind) => {
-    const src = kind === "fans" ? followerFollows : followingFollows;
-    const ids = src
-      .map((f) => (kind === "fans" ? f.follower_id : f.followee_id))
-      .filter(Boolean);
-    const names = Object.fromEntries(
-      src
-        .filter((f) => kind === "fans" && f.follower_name)
-        .map((f) => [f.follower_id, f.follower_name])
-    );
-    setListSheet({
-      title: kind === "fans" ? "Fans" : "Following",
-      ids,
-      names,
-      emptyText: kind === "fans" ? "No fans yet" : "Not following anyone yet",
-    });
+    setListSheet(kind);
   };
+
+  const listSource = listSheet === "fans" ? followerFollows : followingFollows;
+  const listIds = listSource
+    .map((row) => (listSheet === "fans" ? row.follower_id : row.followee_id))
+    .filter(Boolean);
+  const listNames = Object.fromEntries(
+    listSource
+      .filter((row) => listSheet === "fans" && row.follower_name)
+      .map((row) => [row.follower_id, row.follower_name])
+  );
 
   const name = displayName(profile) || "Creator";
   const locked = Boolean(profile?.private_account) && !isSelf && !isFollowing;
@@ -296,7 +334,7 @@ export default function Profile() {
               <>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button disabled className="acid-btn bg-muted text-foreground opacity-60">
-                    <Ban className="w-4 h-4" /> Messaging off
+                    <Ban className="w-4 h-4" /> Can't message
                   </button>
                   <button onClick={unblock} className="acid-btn bg-muted text-foreground">
                     <Ban className="w-4 h-4" /> Unblock
@@ -404,7 +442,13 @@ export default function Profile() {
         </>
         )}
       </div>
-      {listSheet && <FollowListSheet {...listSheet} onClose={() => setListSheet(null)} />}
+      {listSheet && <FollowListSheet
+        title={listSheet === "fans" ? "Fans" : "Following"}
+        ids={listIds}
+        names={listNames}
+        emptyText={listSheet === "fans" ? "No fans yet" : "Not following anyone yet"}
+        onClose={() => setListSheet(null)}
+      />}
       <BottomNav />
     </div>
   );

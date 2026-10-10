@@ -238,7 +238,7 @@ export default function UploadPage() {
 
         {step === 1 && (
           <div className="space-y-4">
-            <label className="acid-label">1. Add photos of your haul</label>
+            <label className="acid-label">1. Add photos for your post</label>
             <label className="acid-card p-6 flex flex-col items-center justify-center gap-2 cursor-pointer border-dashed">
               {busy ? <Loader2 className="w-8 h-8 animate-spin" /> : <Upload className="w-8 h-8" />}
               <span className="font-heading font-bold uppercase text-sm">{isMobile ? "upload from device" : "Tap to upload"}</span>

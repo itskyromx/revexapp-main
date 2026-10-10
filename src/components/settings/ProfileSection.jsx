@@ -4,6 +4,7 @@ import { supabase, uploadPublicFile } from "@/api/supabaseClient";
 import { Check, Loader2, Moon, Sun, Upload } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import { displayName } from "@/lib/revex";
+import { isUsernameAvailable, isValidUsername, normalizeUsername } from "@/lib/usernames";
 
 export default function ProfileSection({ user, setUser }) {
   const { theme, setTheme } = useTheme();
@@ -30,13 +31,21 @@ export default function ProfileSection({ user, setUser }) {
   };
 
   const save = async () => {
-    setBusy(true);
     setError("");
     setSaved(false);
-    const label = name.trim() || displayName(user);
+    const username = normalizeUsername(name);
+    if (!isValidUsername(username)) {
+      setError("Username must be 3–20 characters, using letters, numbers, and underscores.");
+      return;
+    }
+    setBusy(true);
+    const label = username;
     try {
+      if (!await isUsernameAvailable(supabase, username, user.id)) {
+        throw new Error("That username is already taken. Choose another one.");
+      }
       const { error } = await supabase.from('profiles')
-        .update({ display_name: name.trim(), bio: bio.trim(), avatar }).eq('id', user.id);
+        .update({ display_name: username, bio: bio.trim(), avatar }).eq('id', user.id);
       if (error) throw error;
       // keep the name on already published posts and listings in sync
       await supabase.from('posts')
@@ -45,7 +54,8 @@ export default function ProfileSection({ user, setUser }) {
       await supabase.from('items')
         .update({ seller_name: label, seller_avatar: avatar }).eq('created_by_id', user.id)
         .then(() => {});
-      setUser({ ...user, display_name: name.trim(), bio: bio.trim(), avatar });
+      setName(username);
+      setUser({ ...user, display_name: username, bio: bio.trim(), avatar });
       setSaved(true);
     } catch (e) {
       setError(e.message || "Couldn't save your profile.");
@@ -70,15 +80,21 @@ export default function ProfileSection({ user, setUser }) {
       </div>
 
       <div>
-        <span className="acid-label">Display name</span>
+        <label htmlFor="profile-username" className="acid-label">Username</label>
         <input
+          id="profile-username"
           className="acid-input mt-1"
-          placeholder={user?.full_name || "Your name"}
+          placeholder="your_username"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(normalizeUsername(e.target.value).replace(/[^a-z0-9_]/g, "").slice(0, 20))}
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          minLength={3}
+          maxLength={20}
         />
         <p className="text-[11px] text-muted-foreground mt-1">
-          Shown on your profile, posts, listings and chats.
+          Your unique name across Revex, shown on your profile, posts, listings and chats.
         </p>
       </div>
 

@@ -125,6 +125,29 @@ export default function InboxThreads() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const reload = () => setRetryKey((key) => key + 1);
+    const channel = supabase.channel(`inbox-realtime:${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `sender_id=eq.${user.id}`,
+      }, reload)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `receiver_id=eq.${user.id}`,
+      }, reload)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'chat_clears', filter: `user_id=eq.${user.id}`,
+      }, reload)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'blocks', filter: `blocker_id=eq.${user.id}`,
+      }, reload)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'blocks', filter: `blocked_id=eq.${user.id}`,
+      }, reload)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
   if (userLoading || loading) {
     return (
       <div className="h-40 flex items-center justify-center">

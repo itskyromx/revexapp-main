@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, IdCard, Lock, Ban, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowLeft, User, IdCard, Lock, Ban, ShieldCheck, Wallet, FileText, LogOut, ChevronRight, Loader2 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAuth } from "@/lib/useAuth";
+import { toast } from "@/components/ui/use-toast";
 import SettingsRow from "@/components/settings/SettingsRow";
 import ProfileSection from "@/components/settings/ProfileSection";
 import PersonalDetailsSection from "@/components/settings/PersonalDetailsSection";
@@ -17,13 +19,30 @@ const SECTIONS = [
   { key: "blocked", label: "Blocked users", hint: "People you've blocked", icon: Ban },
   { key: "security", label: "Security", hint: "Password and sign-in", icon: ShieldCheck },
   { key: "payments", label: "Payments", hint: "Seller payouts", icon: Wallet },
+  { key: "legal", label: "Legal documents", hint: "Terms and Conditions & Privacy Policy", icon: FileText },
 ];
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const { user, loading, setUser } = useCurrentUser();
   const [open, setOpen] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const section = SECTIONS.find((s) => s.key === open);
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout(false);
+      toast({ title: "Logged out", description: "You have been logged out of your account." });
+      navigate("/", { replace: true });
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Couldn't log out", description: "Please try again." });
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -45,9 +64,15 @@ export default function Settings() {
             <div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" />
           </div>
         ) : !open ? (
-          SECTIONS.map((s) => (
-            <SettingsRow key={s.key} icon={s.icon} label={s.label} hint={s.hint} onClick={() => setOpen(s.key)} />
-          ))
+          <>
+            {SECTIONS.map((s) => (
+              <SettingsRow key={s.key} icon={s.icon} label={s.label} hint={s.hint} onClick={() => setOpen(s.key)} />
+            ))}
+            <button onClick={handleLogout} disabled={loggingOut} className="acid-btn bg-muted text-foreground mt-4 w-full disabled:opacity-50">
+              {loggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+              {loggingOut ? "Logging out..." : "Log out"}
+            </button>
+          </>
         ) : (
           <>
             {open === "profile" && <ProfileSection user={user} setUser={setUser} />}
@@ -56,6 +81,23 @@ export default function Settings() {
             {open === "blocked" && <BlockedUsersSection />}
             {open === "security" && <SecuritySection user={user} />}
             {open === "payments" && <PaymentsSection user={user} />}
+            {open === "legal" && (
+              <div className="space-y-2">
+                {[
+                  ["Terms and Conditions", "/terms-and-conditions"],
+                  ["Privacy Policy", "/privacy-policy"],
+                ].map(([label, path]) => (
+                  <button
+                    key={path}
+                    onClick={() => navigate(path)}
+                    className="acid-card-sm w-full p-4 flex items-center justify-between text-left font-heading font-bold uppercase text-sm"
+                  >
+                    {label}
+                    <ChevronRight className="w-4 h-4 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
