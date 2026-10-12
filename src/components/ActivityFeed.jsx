@@ -38,6 +38,11 @@ export default function ActivityFeed() {
         const { data: list, error } = await supabase.from('notifications').select('*')
           .eq('recipient_id', user.id).order('created_at', { ascending: false }).limit(100);
         if (error) throw error;
+        const { error: markReadError } = await supabase.from('notifications')
+          .update({ read: true })
+          .eq('recipient_id', user.id)
+          .eq('read', false);
+        if (markReadError) throw markReadError;
         const profiles = await loadProfilesById((list || []).map((item) => item.actor_id));
         if (alive) {
           setItems((list || []).map((item) => {
@@ -47,6 +52,7 @@ export default function ActivityFeed() {
               : "Creator";
             return {
               ...item,
+              read: true,
               actor_name: profileLabel(profile, fallbackName),
               actor_avatar: profile?.avatar || item.actor_avatar || "",
             };
@@ -87,16 +93,6 @@ export default function ActivityFeed() {
   const clear = async (n) => {
     setItems((arr) => arr.filter((x) => x.id !== n.id));
     await supabase.from('notifications').delete().eq('id', n.id).then(() => {});
-  };
-
-  const markAllRead = async () => {
-    const unread = items.filter((n) => !n.read);
-    if (!unread.length) return;
-    setBusy(true);
-    setItems((arr) => arr.map((n) => ({ ...n, read: true })));
-    await supabase.from('notifications').update({ read: true })
-      .in('id', unread.map((n) => n.id)).then(() => {});
-    setBusy(false);
   };
 
   const clearRead = async () => {
@@ -157,11 +153,6 @@ export default function ActivityFeed() {
       <div className="flex items-center justify-between gap-2 mb-2">
         <span className="acid-label">{unreadCount ? `${unreadCount} new` : "All caught up"}</span>
         <div className="flex gap-2">
-          {unreadCount > 0 && (
-            <button onClick={markAllRead} disabled={busy} className="acid-btn bg-muted text-foreground px-3 py-1 text-xs disabled:opacity-50">
-              Mark all read
-            </button>
-          )}
           {hasRead && (
             <button onClick={clearRead} disabled={busy} className="acid-btn bg-muted text-foreground px-3 py-1 text-xs disabled:opacity-50">
               Clear read

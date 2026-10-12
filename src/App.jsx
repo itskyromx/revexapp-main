@@ -53,7 +53,10 @@ const AuthenticatedApp = () => {
     }
   }
 
-  if (isAuthenticated && !user?.display_name?.trim() && location.pathname !== '/onboarding') {
+  // Google OAuth does not collect a Revex username at registration. Require
+  // one on the onboarding screen before letting that account into the app.
+  const needsUsername = !user?.display_name?.trim();
+  if (isAuthenticated && needsUsername && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
 

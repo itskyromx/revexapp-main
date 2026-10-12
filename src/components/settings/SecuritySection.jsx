@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { Check, Loader2 } from "lucide-react";
 import { toDate } from "@/lib/revex";
 import DeleteAccountCard from "@/components/settings/DeleteAccountCard";
 
 export default function SecuritySection({ user }) {
+  const [authUser, setAuthUser] = useState(null);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -12,10 +13,29 @@ export default function SecuritySection({ user }) {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (active && !error) setAuthUser(data?.user || null);
+    });
+    return () => { active = false; };
+  }, []);
+
   const joined = toDate(user?.created_at);
+  const provider = authUser?.app_metadata?.provider || authUser?.provider || user?.auth_provider || user?.provider;
+  const providers = authUser?.app_metadata?.providers || [];
+  const identities = authUser?.identities || [];
+  const googleAccount = provider === "google"
+    || providers.includes("google")
+    || identities.some((identity) => identity.provider === "google");
+  const signInMethod = googleAccount
+    ? "Google Authentication"
+    : provider && provider !== "email"
+      ? `${provider.charAt(0).toUpperCase()}${provider.slice(1)} Authentication`
+      : "Email & password";
   const signInRows = [
     ["Email", user?.email || "—"],
-    ["Sign-in method", user?.auth_provider || user?.provider || "Email & password"],
+    ["Sign-in method", signInMethod],
     [
       "Member since",
       joined ? joined.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—",

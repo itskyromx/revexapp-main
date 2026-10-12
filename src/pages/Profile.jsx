@@ -225,7 +225,7 @@ export default function Profile() {
         setIsFollowing(false);
         setFollowerFollows((rows) => rows.filter((row) => row.follower_id !== me.id));
         setFollowingFollows((rows) => rows.filter((row) => row.followee_id !== me.id));
-        toast({ title: "User blocked", description: "You both no longer follow each other." });
+        toast({ title: "User blocked", description: "You blocked this user." });
       }
     } catch (error) { console.error(error); toast({ title: "Couldn't block user", description: "Try again." }); }
     finally { setBusyBlock(false); setMenuOpen(false); }

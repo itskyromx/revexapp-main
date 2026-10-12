@@ -368,7 +368,12 @@ export default function Chat() {
       const direction = await setBlockRelationship(me.id, userId);
       setBlockDirection(direction);
       setCantMessage(Boolean(direction));
-      if (direction === "you") navigate("/inbox");
+      toast({ title: "User blocked", description: direction === "you" ? "You cannot message this user." : "This user blocked you." });
+      if (direction === "you") {
+        setMessages([]);
+        setText("");
+        setOtherTyping(false);
+      }
       else toast({ title: "User already blocked you", description: "You cannot change their block from your account." });
     } catch (e) {
       console.error(e);
@@ -386,7 +391,7 @@ export default function Chat() {
       await clearBlockRelationship(me.id, userId);
       setBlockDirection(null);
       setCantMessage(false);
-      toast({ title: "User unblocked" });
+      toast({ title: "User unblocked", description: "You can now message this user again." });
     } catch (e) {
       console.error(e);
       toast({ title: "Couldn't unblock user", description: "Try again." });

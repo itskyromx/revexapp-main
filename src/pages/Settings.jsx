@@ -34,7 +34,7 @@ export default function Settings() {
     setLoggingOut(true);
     try {
       await logout(false);
-      toast({ title: "Logged out", description: "You have been logged out of your account." });
+      toast({ title: "Logged out", description: "You have logged out of your account." });
       navigate("/", { replace: true });
     } catch (error) {
       console.error(error);

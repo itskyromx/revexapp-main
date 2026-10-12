@@ -7,7 +7,7 @@ import useUnreadNotifications from "@/hooks/useUnreadNotifications";
 
 /** Inbox — activity alerts first, with the chat threads one tap away. */
 export default function Inbox() {
-  const [tab, setTab] = useState("activity");
+  const [tab, setTab] = useState("chats");
   const unread = useUnreadNotifications();
 
   return (
@@ -21,18 +21,18 @@ export default function Inbox() {
       <div className="max-w-md mx-auto p-4">
         <div className="flex border-[3px] border-border bg-card mb-4">
           <button
-            onClick={() => setTab("activity")}
-            className={`flex-1 py-2 font-heading font-bold uppercase text-xs ${tab === "activity" ? "bg-brand-red text-white" : "text-foreground"}`}>
-            Activity
+            onClick={() => setTab("chats")}
+            className={`flex-1 py-2 font-heading font-bold uppercase text-xs ${tab === "chats" ? "bg-brand-red text-white" : "text-foreground"}`}>
+            Chats
           </button>
           <button
-            onClick={() => setTab("chats")}
-            className={`flex-1 py-2 font-heading font-bold uppercase text-xs border-l-2 border-border ${tab === "chats" ? "bg-brand-red text-white" : "text-foreground"}`}>
-            Chats
+            onClick={() => setTab("activity")}
+            className={`flex-1 py-2 font-heading font-bold uppercase text-xs border-l-2 border-border ${tab === "activity" ? "bg-brand-red text-white" : "text-foreground"}`}>
+            Activity
           </button>
         </div>
 
-        {tab === "activity" ? <ActivityFeed /> : <InboxThreads />}
+        {tab === "chats" ? <InboxThreads /> : <ActivityFeed />}
       </div>
 
       <BottomNav />

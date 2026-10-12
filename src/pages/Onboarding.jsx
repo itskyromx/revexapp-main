@@ -1,16 +1,36 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
+import { useAuth } from "@/lib/useAuth";
+import { toast } from "@/components/ui/use-toast";
 import { CURATED_TAGS, CURATED_BRANDS } from "@/lib/revex";
 import { Loader2, Check, Plus } from "lucide-react";
+import { isUsernameAvailable, isValidUsername, normalizeUsername } from "@/lib/usernames";
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const [styles, setStyles] = useState([]);
-  const [brands, setBrands] = useState([]);
+  const { user, checkUserAuth } = useAuth();
+  const [username, setUsername] = useState("");
+  const [styles, setStyles] = useState(user?.style_preferences || []);
+  const [brands, setBrands] = useState(user?.favorite_brands || []);
   const [brandInput, setBrandInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  const needsUsername = !user?.display_name?.trim();
+
+  useEffect(() => {
+    if (!needsUsername || username) return;
+    const googleName = user?.user_metadata?.preferred_username
+      || user?.user_metadata?.name
+      || user?.user_metadata?.full_name
+      || "";
+    const suggestion = normalizeUsername(googleName.normalize("NFKD").replace(/[\u0300-\u036f]/g, ""))
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 20);
+    if (isValidUsername(suggestion)) setUsername(suggestion);
+  }, [needsUsername, user, username]);
 
   const toggle = (value, list, setter) => {
     const key = value.toLowerCase();
@@ -35,17 +55,42 @@ export default function Onboarding() {
     setSaving(true);
     setSubmitError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Please sign in again to finish setting up your account.");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Please sign in again to finish setting up your account.");
+      const normalizedUsername = normalizeUsername(username);
+      if (needsUsername) {
+        if (!isValidUsername(normalizedUsername)) {
+          throw new Error("Username must be 3–20 characters, using letters, numbers, and underscores.");
+        }
+        if (!await isUsernameAvailable(supabase, normalizedUsername, authUser.id)) {
+          throw new Error("That username is already taken. Choose another one.");
+        }
+      }
       const { data: profile, error } = await supabase
         .from("profiles")
-        .update({ style_preferences: styles, favorite_brands: brands })
-        .eq("id", user.id)
-        .select("id")
+        .update({
+          ...(needsUsername ? { display_name: normalizedUsername } : {}),
+          style_preferences: styles,
+          favorite_brands: brands,
+        })
+        .eq("id", authUser.id)
+        .select("id, display_name, style_preferences")
         .maybeSingle();
       if (error) throw error;
       if (!profile) throw new Error("We couldn't save your preferences. Please try again.");
-      navigate("/");
+      if (needsUsername && profile.display_name !== normalizedUsername) {
+        throw new Error("Your username wasn't saved. Please try again.");
+      }
+      if (!profile.style_preferences?.length) {
+        throw new Error("Your preferences were not saved. Please select a style and try again.");
+      }
+      const refreshedUser = await checkUserAuth(false);
+      if (!refreshedUser) throw new Error("Please sign in again to finish setting up your account.");
+      toast({
+        title: "Welcome to Revex!",
+        description: "Your account is ready and your preferences have been saved.",
+      });
+      navigate("/", { replace: true });
     } catch (e) {
       console.error(e);
       setSubmitError(e.message || "Couldn't finish setting up your account. Please try again.");
@@ -87,6 +132,26 @@ export default function Onboarding() {
             })}
           </div>
         </section>
+
+        {needsUsername && (
+          <section className="mt-8">
+            <h2 className="font-display text-xl uppercase mb-3">Choose your username</h2>
+            <input
+              id="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={username}
+              onChange={(e) => setUsername(normalizeUsername(e.target.value).replace(/[^a-z0-9_]/g, "").slice(0, 20))}
+              placeholder="your_username"
+              minLength={3}
+              maxLength={20}
+              className="w-full bg-white/5 border-2 border-white/20 px-3 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-red"
+            />
+            <p className="text-xs text-white/50 mt-2">This unique username makes your profile searchable on Revex.</p>
+          </section>
+        )}
 
         {/* Brands */}
         <section className="mt-8">

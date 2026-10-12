@@ -43,25 +43,30 @@ export const AuthProvider = ({ children }) => {
     if (shouldRedirect) window.location.href = '/login';
   };
 
-  const checkUserAuth = async () => {
+  const checkUserAuth = async (showLoader = true) => {
     try {
-      setIsLoadingAuth(true);
+      if (showLoader) setIsLoadingAuth(true);
       const currentUser = await getCurrentUserProfile();
       if (currentUser) {
         setUser(currentUser);
         setIsAuthenticated(true);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        return currentUser;
       } else {
         setUser(null);
         setIsAuthenticated(false);
       }
       setIsLoadingAuth(false);
       setAuthChecked(true);
+      return null;
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
       setAuthError({ type: 'unknown', message: error.message || 'An unexpected error occurred' });
+      return null;
     }
   };
 

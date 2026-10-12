@@ -38,7 +38,7 @@ export default function SiteHeader({ actions, context }) {
         {context && <span className="hidden sm:block font-display text-sm uppercase truncate">{context}</span>}
         <div className="hidden md:flex items-center gap-2 flex-1 max-w-md mx-auto border-2 border-border bg-background px-3 h-9">
           <Search className="w-4 h-4 text-muted-foreground" />
-          <input placeholder="Search drops, brands, tags" className="bg-transparent flex-1 outline-none text-sm" />
+          <input placeholder="Search profiles, brands, tags" className="bg-transparent flex-1 outline-none text-sm" />
         </div>
         <div className="ml-auto flex items-center gap-2">
           {actions}
