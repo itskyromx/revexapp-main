@@ -159,6 +159,12 @@
   .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
   /* Double-tap like feedback */
+  @keyframes post-slide-in {
+    from { opacity: 0.6; transform: translateX(var(--slide-from, 22px)); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .animate-post-slide { animation: post-slide-in 240ms ease-out both; }
+
   @keyframes heart-burst {
     0% { transform: scale(0.3); opacity: 0; }
     20% { transform: scale(1.15); opacity: 1; }

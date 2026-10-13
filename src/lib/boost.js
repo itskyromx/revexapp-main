@@ -1,4 +1,4 @@
-// Mirrors base44/shared/boost.ts. The server owns the real price and duration —
+// The server owns the real price and duration —
 // this copy only drives what the seller sees before paying.
 export const BOOST_PACKAGES = [
   { id: "day", label: "24 hours", hours: 24, price: 1.49 },

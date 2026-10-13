@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, UserPlus, UserCheck, Package, ShoppingBag, Settings as SettingsIcon, FileText, ShieldAlert, Truck, Ban, Lock, Bookmark, MoreHorizontal, Flag } from "lucide-react";
+import { ArrowLeft, UserPlus, UserCheck, Package, ShoppingBag, Settings as SettingsIcon, FileText, ShieldAlert, Truck, Ban, Lock, Bookmark, MoreHorizontal, Flag, Star } from "lucide-react";
 import { getBlockedIds, hideBlocked, clearBlockRelationship, getBlockDirection, setBlockRelationship } from "@/lib/blocks";
 import { displayName } from "@/lib/revex";
 import Avatar from "@/components/Avatar";
@@ -374,8 +374,6 @@ export default function Profile() {
           null}
         </div>
 
-        <SellerRatingSummary userId={targetId} />
-
         {locked ? (
           <div className="acid-card p-6 mt-4 text-center">
             <Lock className="w-6 h-6 mx-auto mb-2" />
@@ -390,6 +388,7 @@ export default function Profile() {
         <div className="flex border-[3px] border-border bg-card mt-4">
           <button onClick={() => setTab("shop")} className={`flex-1 py-2 font-heading font-bold uppercase text-xs flex items-center justify-center gap-1 ${tab === "shop" ? "bg-brand-red text-white" : "text-foreground"}`}><ShoppingBag className="w-4 h-4" /> Shop</button>
           <button onClick={() => setTab("hauls")} className={`flex-1 py-2 font-heading font-bold uppercase text-xs flex items-center justify-center gap-1 border-l-2 border-border ${tab === "hauls" ? "bg-brand-red text-white" : "text-foreground"}`}><Package className="w-4 h-4" /> Posts</button>
+          <button onClick={() => setTab("reviews")} className={`flex-1 py-2 font-heading font-bold uppercase text-xs flex items-center justify-center gap-1 border-l-2 border-border ${tab === "reviews" ? "bg-brand-red text-white" : "text-foreground"}`}><Star className="w-4 h-4" /> Reviews</button>
           {isSelf && (
             <button onClick={() => setTab("saved")} className={`flex-1 py-2 font-heading font-bold uppercase text-xs flex items-center justify-center gap-1 border-l-2 border-border ${tab === "saved" ? "bg-brand-red text-white" : "text-foreground"}`}><Bookmark className="w-4 h-4" /> Saved</button>
           )}
@@ -404,6 +403,8 @@ export default function Profile() {
           <DraftsTab />
         ) : tab === "saved" ? (
           <SavedTab />
+        ) : tab === "reviews" ? (
+          <SellerRatingSummary userId={targetId} />
         ) : tab === "shop" ?
           items.length === 0 ?
             <div className="acid-card p-6 mt-4 text-center text-sm text-muted-foreground">No items listed yet.</div> :

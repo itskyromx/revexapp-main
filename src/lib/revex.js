@@ -1,4 +1,5 @@
 // Revex shared helpers + constants
+import { hasCookieConsent } from "@/lib/cookieConsent";
 
 export const CONDITION_LABELS = {
   new_with_tags: "NWT",
@@ -16,6 +17,29 @@ export const CATEGORY_LABELS = {
   accessories: "Accessories",
   other: "Other",
 };
+
+export const PRODUCT_GENDERS = ["men", "women", "unisex"];
+export const PRODUCT_GENDER_LABELS = { men: "Men", women: "Women", unisex: "Unisex" };
+
+export const PRODUCT_CATEGORIES = {
+  coats: { label: "Coats & jackets", subcategories: ["Puffer", "Denim jacket", "Leather jacket", "Bomber", "Trench coat", "Blazer", "Windbreaker"] },
+  trousers: { label: "Trousers", subcategories: ["Baggy", "Straight", "Skinny", "Wide-leg", "Cargo", "Flare", "Tailored", "Joggers"] },
+  shirts: { label: "Shirts & tops", subcategories: ["T-shirt", "Shirt", "Blouse", "Tank top", "Knitwear", "Hoodie", "Sweatshirt", "Polo"] },
+  accessories: { label: "Accessories", subcategories: ["Bags", "Belts", "Hats", "Jewellery", "Scarves", "Sunglasses", "Watches"] },
+  shoes: { label: "Shoes", subcategories: ["Sneakers", "Boots", "Loafers", "Heels", "Sandals", "Flats"] },
+  dresses: { label: "Dresses & skirts", subcategories: ["Mini dress", "Midi dress", "Maxi dress", "Mini skirt", "Midi skirt", "Maxi skirt"] },
+};
+
+export const PRODUCT_BRANDS = [
+  "Nike", "Adidas", "Levi's", "New Balance", "Zara", "H&M", "Uniqlo", "Carhartt",
+  "The North Face", "Patagonia", "Converse", "Puma", "Reebok", "Vans", "Dickies",
+  "Dr. Martens", "Stüssy", "Supreme", "Ralph Lauren", "Gucci", "Prada", "Other",
+];
+
+export const STYLE_TAGS = [
+  "Y2K", "Streetwear", "Alternative", "Vintage", "Grunge", "Minimalist", "Gorpcore",
+  "Old money", "Coquette", "Cottagecore", "Skater", "Workwear", "Darkwear", "Preppy",
+];
 
 export const POST_CATEGORIES = [
   "hauls", "try_on", "streetwear", "vintage", "y2k", "cottagecore", "luxury", "other",
@@ -91,18 +115,22 @@ export function timeAgoVerbose(dateStr) {
 }
 
 export function loadLiked() {
+  if (!hasCookieConsent("preferences")) return new Set();
   try { return new Set(JSON.parse(localStorage.getItem("revex_liked") || "[]")); }
   catch { return new Set(); }
 }
 export function saveLiked(set) {
+  if (!hasCookieConsent("preferences")) return;
   try { localStorage.setItem("revex_liked", JSON.stringify([...set])); } catch {}
 }
 
 export function loadSaved() {
+  if (!hasCookieConsent("preferences")) return new Set();
   try { return new Set(JSON.parse(localStorage.getItem("revex_saved") || "[]")); }
   catch { return new Set(); }
 }
 export function saveSaved(set) {
+  if (!hasCookieConsent("preferences")) return;
   try { localStorage.setItem("revex_saved", JSON.stringify([...set])); } catch {}
 }
 

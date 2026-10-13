@@ -7,13 +7,38 @@ import { Loader2 } from "lucide-react";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 import { enrichPostCreators } from "@/lib/profileData";
 import { refreshPostCounters } from "@/lib/postStats";
+import { hasCookieConsent } from "@/lib/cookieConsent";
+import { useI18n } from "@/lib/i18n";
 
 // Kept for the life of the app session: coming back to the feed reuses the posts
 // already loaded instead of refetching and reordering them.
 let feedCache = null;
 const INDEX_KEY = "revex_feed_index";
 
+async function attachPostProducts(posts) {
+  const itemIds = [...new Set(posts.flatMap((post) => post.item_ids || []))];
+  if (!itemIds.length) return posts;
+  const { data, error } = await supabase.from("items").select("*").in("id", itemIds);
+  if (error) throw error;
+  const products = Object.fromEntries((data || []).map((item) => [item.id, item]));
+  return posts.map((post) => ({ ...post, product: products[post.item_ids?.[0]] || null }));
+}
+
+async function personalizePosts(posts) {
+  if (!hasCookieConsent("personalization")) return posts;
+  try {
+    const { data, error } = await supabase.functions.invoke("productSemantics", { body: { mode: "recommend" } });
+    if (error || !data?.itemIds?.length) return posts;
+    const rank = new Map(data.itemIds.map((id, index) => [id, index]));
+    return posts.map((post, index) => ({ post, index, rank: rank.get(post.product?.id) ?? Number.MAX_SAFE_INTEGER }))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index).map(({ post }) => post);
+  } catch {
+    return posts;
+  }
+}
+
 export default function Feed() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [posts, setPosts] = useState(feedCache?.posts || []);
   const [loading, setLoading] = useState(!feedCache);
@@ -42,7 +67,7 @@ export default function Feed() {
         getBlockedIds(),
       ]);
       if (res.error) throw res.error;
-      const next = await enrichPostCreators(hideBlocked(res.data?.posts || [], blockedIds));
+      const next = await personalizePosts(await attachPostProducts(await enrichPostCreators(hideBlocked(res.data?.posts || [], blockedIds))));
       feedCache = { posts: next, cursor: res.data.nextCursor };
       setPosts(next);
       setCursor(res.data.nextCursor);
@@ -89,7 +114,7 @@ export default function Feed() {
     if (loading || restoredRef.current) return;
     const el = scrollRef.current;
     if (!el) return;
-    const idx = Number(sessionStorage.getItem(INDEX_KEY) || 0);
+    const idx = hasCookieConsent("preferences") ? Number(sessionStorage.getItem(INDEX_KEY) || 0) : 0;
     if (idx > 0) el.scrollTop = idx * el.clientHeight;
     restoredRef.current = true;
   }, [loading, posts]);
@@ -97,9 +122,11 @@ export default function Feed() {
   const rememberIndex = () => {
     const el = scrollRef.current;
     if (!el || !el.clientHeight) return;
-    try {
-      sessionStorage.setItem(INDEX_KEY, String(Math.round(el.scrollTop / el.clientHeight)));
-    } catch {}
+    if (hasCookieConsent("preferences")) {
+      try {
+        sessionStorage.setItem(INDEX_KEY, String(Math.round(el.scrollTop / el.clientHeight)));
+      } catch {}
+    }
   };
 
   const loadMore = async () => {
@@ -110,7 +137,7 @@ export default function Feed() {
         supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } }),
         getBlockedIds(),
       ]);
-      const more = await enrichPostCreators(hideBlocked(res.data?.posts || [], blockedIds));
+      const more = await personalizePosts(await attachPostProducts(await enrichPostCreators(hideBlocked(res.data?.posts || [], blockedIds))));
       setPosts((p) => {
         const merged = [...p, ...more];
         feedCache = { posts: merged, cursor: res.data.nextCursor };
@@ -138,8 +165,8 @@ export default function Feed() {
         </div>
       ) : posts.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center px-8 text-center">
-          <p className="font-display text-2xl uppercase text-white mb-1">No posts yet</p>
-          <p className="text-sm text-white/70">Be the first to upload!</p>
+          <p className="font-display text-2xl uppercase text-white mb-1">{t("No posts yet")}</p>
+          <p className="text-sm text-white/70">{t("Be the first to upload!")}</p>
         </div>
       ) : (
         <div

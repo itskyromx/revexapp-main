@@ -51,6 +51,9 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
   const lastTapRef = useRef(0);
   const burstTimer = useRef(null);
+  const touchStartRef = useRef(null);
+  const ignoreTapUntilRef = useRef(0);
+  const [slideDirection, setSlideDirection] = useState(1);
 
   useEffect(() => () => { if (burstTimer.current) clearTimeout(burstTimer.current); }, []);
 
@@ -118,6 +121,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
   // Double tap likes and flashes a heart; a single tap does nothing.
   const handleMediaTap = () => {
+    if (Date.now() < ignoreTapUntilRef.current) return;
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
       lastTapRef.current = 0;
@@ -153,7 +157,27 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
   const share = () => setShareOpen(true);
 
-  const go = (delta) => setMediaIndex((i) => (i + delta + media.length) % media.length);
+  const go = (delta) => {
+    setSlideDirection(delta);
+    setMediaIndex((i) => (i + delta + media.length) % media.length);
+  };
+
+  const handleTouchStart = (event) => {
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event) => {
+    if (!touchStartRef.current || media.length < 2) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+      ignoreTapUntilRef.current = Date.now() + 500;
+      go(dx < 0 ? 1 : -1);
+    }
+  };
 
   const handleToggleChrome = () => {
     setShareOpen(false);
@@ -165,14 +189,14 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
       {/* Media */}
       <div className="absolute inset-0">
         {current?.url ? (
-          <img src={current.url} alt={post.haul_title} className="w-full h-full object-cover" />
+          <img key={`${mediaIndex}:${current.url}`} src={current.url} alt={post.haul_title} className="w-full h-full object-cover animate-post-slide" style={{ "--slide-from": `${slideDirection * 22}px` }} />
         ) : (
           <div className="w-full h-full grid-bg bg-muted" />
         )}
       </div>
 
       {/* Media tap layer — double tap to like, a single tap does nothing */}
-      <button className="absolute inset-0 z-[5]" onClick={handleMediaTap} aria-label="Double tap to like" />
+      <button className="absolute inset-0 z-[5] touch-pan-y" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onClick={handleMediaTap} aria-label="Double tap to like" />
 
       {/* Double-tap heart */}
       {burst && (
@@ -261,6 +285,10 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
           {/* Bottom info — caption + tags only, raised above bottom nav */}
           <div className="absolute bottom-20 left-3 right-20 z-20">
+            {post.product && <button onClick={() => navigate(`/item/${post.product.id}`)} className="mb-2 inline-flex max-w-full items-center gap-2 border-2 border-white bg-black/60 px-2.5 py-1 text-left text-[11px] text-white">
+              <span className="font-heading font-bold uppercase truncate">{post.product.brand || post.product.title}</span>
+              <span className="shrink-0">{post.product.price ? `€${Number(post.product.price).toFixed(2)}` : "View item"}</span>
+            </button>}
             {caption && (
               <p className={`text-sm text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${expanded ? "" : "line-clamp-2"}`}>
                 {caption}

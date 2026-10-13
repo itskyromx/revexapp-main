@@ -4,7 +4,7 @@ export default function PrivacyPolicy() {
   return (
     <LegalDocument
       title="Privacy Policy"
-      updated="October 10, 2026"
+      updated="October 13, 2026"
       otherPath="/terms-and-conditions"
       otherLabel="Terms and Conditions"
     >
@@ -17,6 +17,7 @@ export default function PrivacyPolicy() {
         <ul className="list-disc space-y-2 pl-6">
           <li><strong>Account information:</strong> email address, username, account identifier, and the profile details you choose to add, such as display name, avatar, bio, preferences, and account settings.</li>
           <li><strong>Content and activity:</strong> posts, photos, videos, listings, likes, bookmarks, follows, reports, and information about how you use platform features.</li>
+          <li><strong>Product search and recommendations:</strong> when you use these features, your search query, public article descriptions, and selected style and brand preferences are processed to create multilingual embeddings for matching products.</li>
           <li><strong>Communications:</strong> messages and related delivery or read information needed to operate chats and notifications.</li>
           <li><strong>Transactions:</strong> order, offer, item, shipping, payout, and payment-status information. Payment providers may collect and process card or bank details directly.</li>
           <li><strong>Technical information:</strong> information needed to maintain account sessions, prevent abuse, secure the Service, and diagnose failures. Your browser or device may also store session and temporary app data.</li>
@@ -31,6 +32,7 @@ export default function PrivacyPolicy() {
           <li>send service notifications, account notices, and requested updates;</li>
           <li>respond to reports, enforce our rules, prevent fraud and abuse, and protect users;</li>
           <li>maintain, troubleshoot, and improve the Service; and</li>
+          <li>match articles to semantic searches and recommend products using your selected styles and brands;</li>
           <li>meet legal obligations and resolve disputes.</li>
         </ul>
         <p>
@@ -117,6 +119,13 @@ export default function PrivacyPolicy() {
           Signing in with Google, making a payment, or opening an external link may involve a third
           party that has its own privacy policy. Review those policies to understand how that provider
           handles information it collects directly.
+        </p>
+        <p>
+          When you publish an article, search for products, or receive personalized recommendations,
+          Revex sends the article description, search query, or selected style and brand preferences to
+          OpenAI to generate multilingual text embeddings. Product vectors and limited product metadata
+          are stored in Revex's Supabase Vector Bucket. The preference vector is generated for the
+          request and is not stored. See the Cookies Policy for the current third-party service inventory.
         </p>
       </LegalSection>
       <LegalSection title="11. Changes and contact">

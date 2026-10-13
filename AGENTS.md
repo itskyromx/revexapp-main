@@ -1,36 +1,25 @@
-const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
+# Project instructions
 
-# AGENTS.md
+## Project context
 
-## Project Context
+This is the Revex web application. Keep changes focused on the user's request and preserve the existing React, Vite, Supabase, and Cloudflare conventions.
 
-This is a Base44 app repository. Treat it as user-owned application code, keep changes focused on the user's request, and preserve existing project conventions.
-
-Start with `README.md` for local setup, environment variables, and publish workflow.
-
-## Base44 References
-
-- CLI overview: https://docs.db.com/developers/references/cli/get-started/overview.md
-- Agent skills: https://docs.db.com/developers/backend/overview/skills.md
-
-If your agent supports Agent Skills, install or update Base44 skills before Base44-specific work:
-
-```bash
-npx skills add base44/skills
-```
-
-## Key Files
+## Key files
 
 - `src/`: frontend application source.
-- `src/api/base44Client.js`: frontend Base44 SDK client.
-- `vite.config.js`: Vite config and Base44 Vite plugin setup.
+- `src/api/supabaseClient.js`: Supabase client and storage helpers.
+- `supabase/`: database migrations and Supabase configuration.
+- `vite.config.js`: Vite and Cloudflare plugin configuration.
 - `.env.local`: local-only environment values; never commit secrets.
 
-## Working Notes
+## Working notes
 
-- Use `base44 dev` as the default local development command when you need the local Base44 backend. It can run the backend and frontend together.
-- When docs or code mention the frontend being started automatically, that usually means the Base44 project config includes `site.serveCommand`, for example `"serveCommand": "npm run dev"` in `base44/config.jsonc`.
-- Use `npm run dev` only for frontend-only work against the hosted Base44 backend.
-- Prefer the existing Base44 CLI workflow over adding new npm scripts for Base44-specific tasks.
-- Reuse the existing SDK client and Vite plugin patterns before adding new Base44 integration paths.
+- Use the existing Supabase client for authentication, data, storage, and Edge Function calls.
+- Use `npm run dev` for local frontend development and the existing Cloudflare workflow for deployment.
 - Run the relevant checks from `package.json` before finishing code changes.
+
+## Privacy and data collection
+
+- Keep `src/lib/dataCollection.js` and `src/pages/CookiesPolicy.jsx` aligned with browser storage, analytics, external resources, payment/auth providers, and any service receiving user or device data.
+- Before releasing a feature that adds collection or a processor, disclose the data and purpose, apply the appropriate consent category and gating where optional, and increment `COOKIE_POLICY_VERSION` in `src/lib/cookieConsent.js` when the notice or choices change.
+- Verify that optional third-party resources do not load before consent and users can reopen cookie settings from the policy page.

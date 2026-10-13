@@ -9,7 +9,7 @@ import AuthLayout from "@/components/AuthLayout";
 
 // Supabase's reset-password link logs the browser in with a temporary
 // "recovery" session automatically (via the URL fragment) — there's no
-// separate token to read from the query string like Base44 used.
+// separate token to read from the query string.
 export default function ResetPassword() {
   const [hasRecoverySession, setHasRecoverySession] = useState(null);
   const [newPassword, setNewPassword] = useState("");

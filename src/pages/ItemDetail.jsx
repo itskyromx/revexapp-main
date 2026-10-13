@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, Bookmark } from "lucide-react";
+import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import OfferSheet from "@/components/OfferSheet";
 import CheckoutSheet from "@/components/CheckoutSheet";
@@ -12,6 +12,7 @@ import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
 import BottomNav from "@/components/BottomNav";
 import { getBlockRelationship } from "@/lib/blocks";
+import { hasCookieConsent } from "@/lib/cookieConsent";
 
 export default function ItemDetail() {
   const { itemId } = useParams();
@@ -30,6 +31,8 @@ export default function ItemDetail() {
   const [saving, setSaving] = useState(false);
   const [cancelNotice, setCancelNotice] = useState("");
   const [blockedRelationship, setBlockedRelationship] = useState(false);
+  const [recommendedItems, setRecommendedItems] = useState([]);
+  const [imageIndex, setImageIndex] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -50,6 +53,30 @@ export default function ItemDetail() {
       } catch (e) { console.error(e); } finally { setLoading(false); }
     })();
   }, [itemId, user?.id]);
+
+  useEffect(() => {
+    if (!item?.id || !hasCookieConsent("personalization")) return;
+    let active = true;
+    (async () => {
+      let recommendations = [];
+      try {
+        const { data: semantic, error } = await supabase.functions.invoke("productSemantics", { body: { mode: "similar", itemId: item.id } });
+        if (!error && semantic?.itemIds?.length) {
+          const { data } = await supabase.from("items").select("*").in("id", semantic.itemIds).eq("status", "available");
+          const rank = new Map(semantic.itemIds.map((id, index) => [id, index]));
+          recommendations = (data || []).sort((a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999));
+        }
+      } catch {}
+      if (!recommendations.length) {
+        let fallback = supabase.from("items").select("*").eq("status", "available").neq("id", item.id);
+        if (item.category) fallback = fallback.eq("category", item.category);
+        const { data } = await fallback.order("created_at", { ascending: false }).limit(8);
+        recommendations = data || [];
+      }
+      if (active) setRecommendedItems(recommendations.filter((entry) => entry.id !== item.id).slice(0, 8));
+    })();
+    return () => { active = false; };
+  }, [item?.id, item?.category]);
 
   useEffect(() => {
     if (item) {
@@ -149,6 +176,8 @@ export default function ItemDetail() {
   };
 
   const canBuy = item?.status === "available" && !isOwner && !blockedRelationship;
+  const productImages = post?.image_urls?.length ? post.image_urls : item?.image_url ? [item.image_url] : [];
+  const currentImage = productImages[imageIndex] || productImages[0];
 
   if (loading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
   if (!item) return <div className="min-h-screen bg-background grid place-items-center p-6"><div className="acid-card p-6">Item not found.</div></div>;
@@ -166,9 +195,14 @@ export default function ItemDetail() {
         {cancelNotice && <div className="acid-card-sm bg-muted p-3 mb-3 text-xs">{cancelNotice}</div>}
         <div className="acid-card overflow-hidden">
           <div className="aspect-[4/5] bg-muted border-b-[3px] border-border relative">
-            {item.image_url ?
-              <img src={item.image_url} className="w-full h-full object-cover" alt={item.title} /> :
+            {currentImage ?
+              <img key={`${imageIndex}:${currentImage}`} src={currentImage} className="w-full h-full object-cover animate-post-slide" alt={item.title} /> :
               <div className="w-full h-full grid-bg" />}
+            {productImages.length > 1 && <>
+              <button aria-label="Previous photo" onClick={() => setImageIndex((index) => (index - 1 + productImages.length) % productImages.length)} className="absolute left-2 top-1/2 -translate-y-1/2 sticker bg-black/60 text-white w-9 h-9 rounded-full"><ChevronLeft className="w-5 h-5" /></button>
+              <button aria-label="Next photo" onClick={() => setImageIndex((index) => (index + 1) % productImages.length)} className="absolute right-2 top-1/2 -translate-y-1/2 sticker bg-black/60 text-white w-9 h-9 rounded-full"><ChevronRight className="w-5 h-5" /></button>
+              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-2 py-1 text-xs text-white">{imageIndex + 1}/{productImages.length}</span>
+            </>}
             {item.status !== "available" &&
               <span className="absolute top-3 left-3 sticker bg-black text-white px-3 py-1 uppercase">{item.status}</span>
             }
@@ -201,6 +235,12 @@ export default function ItemDetail() {
                 {item.tags.map((t) => <span key={t} className="acid-chip bg-muted">#{t}</span>)}
               </div>
             )}
+            {item.description && <p className="text-sm mt-4 whitespace-pre-wrap">{item.description}</p>}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {item.gender && <span className="acid-chip bg-card capitalize">{item.gender === "men" ? "Men" : item.gender === "women" ? "Women" : "Unisex"}</span>}
+              {item.subcategory && <span className="acid-chip bg-card">{item.subcategory}</span>}
+              {item.styles?.map((style) => <span key={style} className="acid-chip bg-muted">{style}</span>)}
+            </div>
             {item.created_by_id && (
               <button onClick={() => navigate(`/profile/${item.created_by_id}`)} className="flex items-center gap-2 mt-4 w-full acid-card-sm bg-muted p-2">
                 <Avatar name={item.seller_name} src={item.seller_avatar} size={36} />
@@ -293,6 +333,18 @@ export default function ItemDetail() {
               )}
             </div>
           </div>
+        )}
+
+        {recommendedItems.length > 0 && (
+          <section className="mt-6">
+            <h2 className="font-display text-lg uppercase mb-3">You may also like</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {recommendedItems.map((recommended) => <button key={recommended.id} onClick={() => navigate(`/item/${recommended.id}`)} className="acid-card-sm overflow-hidden text-left">
+                {recommended.image_url ? <img src={recommended.image_url} alt={recommended.title} className="aspect-square w-full object-cover" /> : <div className="aspect-square grid-bg" />}
+                <span className="block p-2"><span className="block truncate text-[10px] font-heading font-bold uppercase text-muted-foreground">{recommended.brand || "Brand"}</span><span className="block truncate text-xs">{recommended.title}</span><span className="font-display">{formatPrice(recommended.price)}</span></span>
+              </button>)}
+            </div>
+          </section>
         )}
 
         <div className="mt-4 acid-card-sm bg-card p-3 flex items-start gap-2">

@@ -4,21 +4,25 @@ import { supabase } from "@/api/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Mail, Lock, Loader2, User } from "lucide-react";
+import { UserPlus, Mail, Lock, Loader2, User, Eye, EyeOff } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { isUsernameAvailable, isValidUsername, normalizeUsername } from "@/lib/usernames";
+import { useI18n } from "@/lib/i18n";
 
 const SIGNUP_OTP_LENGTH = 6;
 
 export default function Register() {
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
@@ -29,22 +33,22 @@ export default function Register() {
     e.preventDefault();
     setError("");
     if (!acceptedLegal) {
-      setError("Please read and agree to the Terms and Conditions and Privacy Policy.");
+      setError(t("Please read and agree to the Terms and Conditions and Privacy Policy."));
       return;
     }
     const normalizedUsername = normalizeUsername(username);
     if (!isValidUsername(normalizedUsername)) {
-      setError("Username must be 3–20 characters, using letters, numbers, and underscores. It can't start or end with an underscore.");
+      setError(t("Username must be 3–20 characters, using letters, numbers, and underscores. It can't start or end with an underscore."));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("Passwords do not match"));
       return;
     }
     setLoading(true);
     try {
       if (!await isUsernameAvailable(supabase, normalizedUsername)) {
-        setError("That username is already taken. Choose another one.");
+        setError(t("That username is already taken. Choose another one."));
         return;
       }
       const { error } = await supabase.auth.signUp({
@@ -55,7 +59,7 @@ export default function Register() {
       if (error) throw error;
       setShowOtp(true);
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setError(t(err.message || "Registration failed"));
     } finally {
       setLoading(false);
     }
@@ -69,7 +73,7 @@ export default function Register() {
       if (error) throw error;
       window.location.href = "/onboarding";
     } catch (err) {
-      setError(err.message || "Invalid verification code");
+      setError(t(err.message || "Invalid verification code"));
     } finally {
       setLoading(false);
     }
@@ -81,17 +85,17 @@ export default function Register() {
       const { error } = await supabase.auth.resend({ type: "signup", email });
       if (error) throw error;
       toast({
-        title: "Code sent",
-        description: "Check your email for the new code.",
+        title: t("Code sent"),
+        description: t("Check your email for the new code."),
       });
     } catch (err) {
-      setError(err.message || "Failed to resend code");
+      setError(t(err.message || "Failed to resend code"));
     }
   };
 
   const handleGoogle = async () => {
     if (!acceptedLegal) {
-      setError("Please read and agree to the Terms and Conditions and Privacy Policy.");
+      setError(t("Please read and agree to the Terms and Conditions and Privacy Policy."));
       return;
     }
     await supabase.auth.signInWithOAuth({
@@ -104,8 +108,8 @@ export default function Register() {
     return (
       <AuthLayout
         icon={Mail}
-        title="Verify your email"
-        subtitle={`We sent a 6-digit code to ${email}`}
+        title={t("Verify your email")}
+      subtitle={t("We sent a 6-digit code to {email}", { email })}
         showBack
       >
         {error && (
@@ -136,16 +140,16 @@ export default function Register() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
+              {t("Verifying...")}
             </>
           ) : (
-            "Verify"
+            t("Verify")
           )}
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
-          Didn't receive the code?{" "}
+          {t("Didn't receive the code?")}{" "}
           <button onClick={handleResend} className="text-primary font-medium hover:underline">
-            Resend
+            {t("Resend")}
           </button>
         </p>
       </AuthLayout>
@@ -155,17 +159,17 @@ export default function Register() {
   return (
     <AuthLayout
       icon={UserPlus}
-      title="Create your account"
-      subtitle="Sign up to get started"
+        title={t("Create your account")}
+        subtitle={t("Sign up to get started")}
       showBack
       footer={
         <>
-          Already have an account?{" "}
+          {t("Already have an account?")}{" "}
           <Link
             to={"/login" + (safeReturnTo() !== "/" ? "?returnTo=" + encodeURIComponent(safeReturnTo()) : "")}
             className="text-primary font-medium hover:underline"
           >
-            Log in
+            {t("Log in")}
           </Link>
         </>
       }
@@ -176,7 +180,7 @@ export default function Register() {
         onClick={handleGoogle}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
+        {t("Continue with Google")}
       </Button>
 
       <div className="relative mb-6">
@@ -184,19 +188,19 @@ export default function Register() {
           <div className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">or</span>
+          <span className="bg-card px-3 text-muted-foreground">{t("or")}</span>
         </div>
       </div>
 
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
+            {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="username">Username</Label>
+          <Label htmlFor="username">{t("Username")}</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -216,7 +220,7 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("Email")}</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -233,35 +237,53 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("Password")}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-12"
+              className="pl-10 pr-12 h-12"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? <Eye className="w-4 h-4" aria-hidden="true" /> : <EyeOff className="w-4 h-4" aria-hidden="true" />}
+            </button>
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+          <Label htmlFor="confirm">{t("Confirm Password")}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="confirm"
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               autoComplete="new-password"
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-10 h-12"
+              className="pl-10 pr-12 h-12"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((visible) => !visible)}
+              aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              aria-pressed={showConfirmPassword}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showConfirmPassword ? <Eye className="w-4 h-4" aria-hidden="true" /> : <EyeOff className="w-4 h-4" aria-hidden="true" />}
+            </button>
           </div>
         </div>
         <div className="flex items-start gap-3 text-sm leading-5">
@@ -274,12 +296,12 @@ export default function Register() {
             className="mt-1 h-4 w-4 shrink-0 accent-primary"
           />
           <label htmlFor="accepted-legal" className="text-muted-foreground">
-            Read and agree with the{" "}
+            {t("Read and agree with the")}{" "}
             <Link to="/terms-and-conditions" className="text-primary font-medium underline underline-offset-2">
-              Terms and Conditions
+              {t("Terms and Conditions")}
             </Link>{" "}&amp;{" "}
             <Link to="/privacy-policy" className="text-primary font-medium underline underline-offset-2">
-              Privacy Policy
+              {t("Privacy Policy")}
             </Link>
           </label>
         </div>
@@ -287,10 +309,10 @@ export default function Register() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating account...
+              {t("Creating account...")}
             </>
           ) : (
-            "Create account"
+            t("Create account")
           )}
         </Button>
       </form>

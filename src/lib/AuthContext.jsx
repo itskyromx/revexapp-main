@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
 
   const checkAppState = async () => {
     // Kept for compatibility with existing call sites; Supabase has no
-    // separate "app public settings" step like Base44 did.
+    // separate "app public settings" step.
     await checkUserAuth();
   };
 

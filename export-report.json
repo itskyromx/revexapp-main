@@ -6,7 +6,7 @@
   "resolvedAssetCount": 0,
   "missingAssets": [],
   "warnings": [
-    "Preview iframe scan failed: Failed to read a named property 'document' from 'Window': Blocked a frame with origin \"https://app.base44.com\" from accessing a cross-origin frame."
+    "Preview iframe scan failed because the browser blocked access to a cross-origin frame."
   ],
   "diagnostics": {
     "exportState": "IDLE",

@@ -1,4 +1,7 @@
 import { supabase } from "@/api/supabaseClient";
+import { hasCookieConsent } from "@/lib/cookieConsent";
+
+const viewedThisSession = new Set();
 
 /**
  * Re-read denormalised counters from the posts table after a feed function
@@ -73,17 +76,23 @@ export async function recordPostView(postId) {
 
   const key = "revex-viewed-posts";
   let viewed = [];
-  try {
-    viewed = JSON.parse(localStorage.getItem(key) || "[]");
-  } catch {
-    viewed = [];
+  const canRememberViews = hasCookieConsent("preferences");
+  if (canRememberViews) {
+    try {
+      viewed = JSON.parse(localStorage.getItem(key) || "[]");
+    } catch {
+      viewed = [];
+    }
   }
-  if (viewed.includes(postId)) return null;
+  if (viewedThisSession.has(postId) || viewed.includes(postId)) return null;
 
   const updated = await updatePostCounter(postId, "view_count", 1);
   if (updated) {
-    viewed.push(postId);
-    localStorage.setItem(key, JSON.stringify(viewed));
+    viewedThisSession.add(postId);
+    if (canRememberViews) {
+      viewed.push(postId);
+      try { localStorage.setItem(key, JSON.stringify(viewed)); } catch {}
+    }
   }
   return updated;
 }

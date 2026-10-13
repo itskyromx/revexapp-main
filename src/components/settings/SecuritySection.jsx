@@ -76,15 +76,6 @@ export default function SecuritySection({ user }) {
 
   return (
     <div className="space-y-4">
-      <div className="acid-card-sm p-3 space-y-2">
-        {signInRows.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between gap-3">
-            <span className="acid-label shrink-0">{label}</span>
-            <span className="text-sm truncate">{value}</span>
-          </div>
-        ))}
-      </div>
-
       <div className="acid-card p-4 space-y-3">
         <span className="font-heading font-bold uppercase text-sm block">Change password</span>
         <input

@@ -6,8 +6,10 @@ import { toast } from "@/components/ui/use-toast";
 import { CURATED_TAGS, CURATED_BRANDS } from "@/lib/revex";
 import { Loader2, Check, Plus } from "lucide-react";
 import { isUsernameAvailable, isValidUsername, normalizeUsername } from "@/lib/usernames";
+import { useI18n } from "@/lib/i18n";
 
 export default function Onboarding() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { user, checkUserAuth } = useAuth();
   const [username, setUsername] = useState("");
@@ -87,13 +89,13 @@ export default function Onboarding() {
       const refreshedUser = await checkUserAuth(false);
       if (!refreshedUser) throw new Error("Please sign in again to finish setting up your account.");
       toast({
-        title: "Welcome to Revex!",
-        description: "Your account is ready and your preferences have been saved.",
+        title: t("Welcome to Revex!"),
+        description: t("Your account is ready and your preferences have been saved."),
       });
       navigate("/", { replace: true });
     } catch (e) {
       console.error(e);
-      setSubmitError(e.message || "Couldn't finish setting up your account. Please try again.");
+      setSubmitError(t(e.message || "Couldn't finish setting up your account. Please try again."));
     } finally {
       setSaving(false);
     }
@@ -102,9 +104,9 @@ export default function Onboarding() {
   return (
     <div className="min-h-[100dvh] bg-black text-white flex flex-col">
       <header className="px-5 pt-10 pb-6 border-b-[3px] border-white/10">
-        <p className="acid-label text-white/50 mb-1">Welcome to Revex</p>
-        <h1 className="font-display text-4xl uppercase leading-[0.95]">Tell us your vibe</h1>
-        <p className="text-sm text-white/60 mt-2 font-body">Pick what you're into so we can fill your feed with posts you'll actually love.</p>
+        <p className="acid-label text-white/50 mb-1">{t("Welcome to Revex")}</p>
+        <h1 className="font-display text-4xl uppercase leading-[0.95]">{t("Tell us your vibe")}</h1>
+        <p className="text-sm text-white/60 mt-2 font-body">{t("Pick what you're into so we can fill your feed with posts you'll actually love.")}</p>
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-6 pb-32 no-scrollbar">
@@ -112,8 +114,8 @@ export default function Onboarding() {
         {/* Styles */}
         <section>
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="font-display text-xl uppercase">Pick your styles</h2>
-            <span className="text-[10px] font-heading uppercase text-white/40">{styles.length} selected</span>
+            <h2 className="font-display text-xl uppercase">{t("Pick your styles")}</h2>
+            <span className="text-[10px] font-heading uppercase text-white/40">{styles.length} {t("selected")}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {CURATED_TAGS.map((tag) => {
@@ -135,7 +137,7 @@ export default function Onboarding() {
 
         {needsUsername && (
           <section className="mt-8">
-            <h2 className="font-display text-xl uppercase mb-3">Choose your username</h2>
+            <h2 className="font-display text-xl uppercase mb-3">{t("Choose your username")}</h2>
             <input
               id="username"
               type="text"
@@ -149,14 +151,14 @@ export default function Onboarding() {
               maxLength={20}
               className="w-full bg-white/5 border-2 border-white/20 px-3 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-red"
             />
-            <p className="text-xs text-white/50 mt-2">This unique username makes your profile searchable on Revex.</p>
+            <p className="text-xs text-white/50 mt-2">{t("This unique username makes your profile searchable on Revex.")}</p>
           </section>
         )}
 
         {/* Brands */}
         <section className="mt-8">
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="font-display text-xl uppercase">Favorite brands</h2>
+            <h2 className="font-display text-xl uppercase">{t("Favorite brands")}</h2>
             <span className="text-[10px] font-heading uppercase text-white/40">{brands.length} selected</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -182,11 +184,11 @@ export default function Onboarding() {
               value={brandInput}
               onChange={(e) => setBrandInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomBrand(); } }}
-              placeholder="Add a brand..."
+              placeholder={t("Add a brand...")}
               className="flex-1 bg-white/5 border-2 border-white/20 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-red"
             />
             <button onClick={addCustomBrand} className="acid-chip bg-white/10 text-white border-white/20 active:scale-95">
-              <Plus className="w-3.5 h-3.5" /> Add
+              <Plus className="w-3.5 h-3.5" /> {t("Add")}
             </button>
           </div>
 
@@ -207,14 +209,14 @@ export default function Onboarding() {
         <div className="max-w-md mx-auto">
           {submitError && <p role="alert" className="text-center text-sm text-red-400 mb-2">{submitError}</p>}
           <p className="text-center text-[10px] font-heading uppercase text-white/40 mb-2">
-            {styles.length > 0 ? "Looking good!" : "Pick at least one style to continue"}
+            {styles.length > 0 ? t("Looking good!") : t("Pick at least one style to continue")}
           </p>
           <button
             disabled={!canSubmit}
             onClick={handleSubmit}
             className="acid-btn bg-brand-red text-white border-white w-full h-12 disabled:opacity-40 disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:shadow-brutal"
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enter Revex"}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("Enter Revex")}
           </button>
         </div>
       </div>

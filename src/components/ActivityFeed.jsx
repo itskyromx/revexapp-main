@@ -5,9 +5,11 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import ActivityRow from "@/components/ActivityRow";
 import { notificationRoute } from "@/lib/notifications";
 import { loadProfilesById, profileLabel } from "@/lib/profileData";
+import { useI18n } from "@/lib/i18n";
 
 /** The activity feed: everything that happened on this account, newest first. */
 export default function ActivityFeed() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { user, loading: userLoading } = useCurrentUser();
   const [items, setItems] = useState([]);
@@ -115,9 +117,9 @@ export default function ActivityFeed() {
   if (!user) {
     return (
       <div className="mt-6 text-center">
-        <p className="font-display text-lg uppercase">Sign in to view activity</p>
+        <p className="font-display text-lg uppercase">{t("Sign in to view activity")}</p>
         <button onClick={() => navigate("/login")} className="acid-btn bg-brand-red text-white px-4 py-2 mt-3 text-xs">
-          Sign in
+          {t("Sign in")}
         </button>
       </div>
     );
@@ -126,9 +128,9 @@ export default function ActivityFeed() {
   if (loadError) {
     return (
       <div className="mt-6 text-center">
-        <p className="text-sm text-muted-foreground">{loadError}</p>
+        <p className="text-sm text-muted-foreground">{t(loadError)}</p>
         <button onClick={() => setRetryKey((key) => key + 1)} className="acid-btn bg-muted text-foreground px-4 py-2 mt-3 text-xs">
-          Retry
+          {t("Retry")}
         </button>
       </div>
     );
@@ -137,9 +139,9 @@ export default function ActivityFeed() {
   if (!items.length) {
     return (
       <div className="mt-6 text-center">
-        <p className="font-display text-lg uppercase">Nothing new</p>
+        <p className="font-display text-lg uppercase">{t("Nothing new")}</p>
         <p className="text-sm text-muted-foreground mt-1">
-          Offers, sales, messages, order updates and likes land here.
+          {t("Offers, sales, messages, order updates and likes land here.")}
         </p>
       </div>
     );
@@ -151,11 +153,11 @@ export default function ActivityFeed() {
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="acid-label">{unreadCount ? `${unreadCount} new` : "All caught up"}</span>
+        <span className="acid-label">{unreadCount ? `${unreadCount} ${t("new")}` : t("All caught up")}</span>
         <div className="flex gap-2">
           {hasRead && (
             <button onClick={clearRead} disabled={busy} className="acid-btn bg-muted text-foreground px-3 py-1 text-xs disabled:opacity-50">
-              Clear read
+              {t("Clear read")}
             </button>
           )}
         </div>

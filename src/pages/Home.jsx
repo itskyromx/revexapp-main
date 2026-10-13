@@ -6,10 +6,12 @@ import { CATEGORY_LABELS } from "@/lib/revex";
 import { formatPrice } from "@/lib/revex";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 import SiteHeader from "@/components/SiteHeader";
+import { useI18n } from "@/lib/i18n";
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS);
 
 export default function Home() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -44,7 +46,7 @@ export default function Home() {
             {/* Featured / boosted */}
             {featured && (
               <section>
-                <SectionTitle icon={<Sparkles className="w-4 h-4" />} title="Boosted" />
+                <SectionTitle icon={<Sparkles className="w-4 h-4" />} title={t("Boosted")} />
                 <button
                   onClick={() => navigate(`/item/${featured.id}`)}
                   className="w-full grid md:grid-cols-2 border-[3px] border-border bg-card overflow-hidden text-left">
@@ -54,8 +56,8 @@ export default function Home() {
                     ) : <div className="w-full h-full grid-bg" />}
                   </div>
                   <div className="p-6 flex flex-col justify-center gap-2">
-                    <span className="inline-flex self-start text-[10px] font-heading uppercase bg-brand-red text-white px-2 py-0.5 border-2 border-border">Boosted</span>
-                    <p className="font-heading font-bold uppercase text-xs text-muted-foreground">{featured.brand || "Brand"}</p>
+                    <span className="inline-flex self-start text-[10px] font-heading uppercase bg-brand-red text-white px-2 py-0.5 border-2 border-border">{t("Boosted")}</span>
+                    <p className="font-heading font-bold uppercase text-xs text-muted-foreground">{featured.brand || t("Brand")}</p>
                     <h2 className="font-display text-3xl uppercase leading-tight">{featured.title}</h2>
                     <p className="font-display text-2xl">{formatPrice(featured.price)}</p>
                   </div>
@@ -65,7 +67,7 @@ export default function Home() {
 
             {/* Categories */}
             <section>
-              <SectionTitle title="Shop by category" />
+              <SectionTitle title={t("Shop by category")} />
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                 {CATEGORIES.map((c) => (
                   <button
@@ -81,7 +83,7 @@ export default function Home() {
             {/* Trending hauls */}
             {posts.length > 0 && (
               <section>
-                <SectionTitle icon={<Flame className="w-4 h-4" />} title="Trending hauls" actionLabel="Open Watch" onAction={() => navigate("/watch")} />
+                <SectionTitle icon={<Flame className="w-4 h-4" />} title={t("Trending hauls")} actionLabel={t("Open Watch")} onAction={() => navigate("/watch")} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {posts.slice(0, 4).map((p) => (
                     <button
@@ -95,7 +97,7 @@ export default function Home() {
                       <div className="absolute bottom-2 left-2 right-2">
                         <p className="font-display text-white text-sm uppercase line-clamp-2">{p.haul_title}</p>
                         <span className="inline-flex items-center gap-1 text-white/80 text-[10px] mt-1">
-                          <Play className="w-3 h-3" /> {p.like_count || 0} likes
+                          <Play className="w-3 h-3" /> {p.like_count || 0} {t("likes")}
                         </span>
                       </div>
                     </button>
@@ -107,7 +109,7 @@ export default function Home() {
             {/* Fresh drops */}
             {freshDrops.length > 0 && (
               <section>
-                <SectionTitle title="Fresh drops" />
+                <SectionTitle title={t("Fresh drops")} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {freshDrops.map((it) => (
                     <button
@@ -120,7 +122,7 @@ export default function Home() {
                         ) : <div className="w-full h-full grid-bg" />}
                       </div>
                       <div className="p-2">
-                        <p className="font-heading font-bold text-xs uppercase truncate">{it.brand || "Brand"}</p>
+                        <p className="font-heading font-bold text-xs uppercase truncate">{it.brand || t("Brand")}</p>
                         <p className="text-sm truncate">{it.title}</p>
                         <p className="font-display text-lg mt-0.5">{formatPrice(it.price)}</p>
                       </div>

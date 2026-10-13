@@ -29,12 +29,12 @@ export default function SellerRatingSummary({ userId }) {
   return (
     <div className="acid-card p-4 mt-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-display uppercase text-lg">Seller rating</h2>
+        <h2 className="font-display uppercase text-lg">Reviews</h2>
         {count > 0 && <span className="acid-chip bg-brand-red text-white">{avg.toFixed(1)} ★</span>}
       </div>
 
       {count === 0 ? (
-        <p className="text-sm text-muted-foreground mt-1">No ratings yet.</p>
+        <p className="text-sm text-muted-foreground mt-1">No reviews yet.</p>
       ) : (
         <>
           <div className="flex items-center gap-2 mt-1">
@@ -45,7 +45,7 @@ export default function SellerRatingSummary({ userId }) {
           </div>
 
           <div className="mt-3">
-            {reviews.slice(0, 5).map((r) => (
+            {reviews.map((r) => (
               <div key={r.id} className="border-t-2 border-border/20 pt-2 mt-2 first:border-0 first:mt-0 first:pt-0">
                 <div className="flex items-center gap-2">
                   <Avatar name={r.buyer_name} src={r.buyer_avatar} size={28} />

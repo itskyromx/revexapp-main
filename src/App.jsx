@@ -27,6 +27,8 @@ import Orders from '@/pages/Orders';
 import SettingsPage from '@/pages/Settings';
 import TermsAndConditions from '@/pages/TermsAndConditions';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
+import CookiesPolicy from '@/pages/CookiesPolicy';
+import CookieConsent from '@/components/CookieConsent';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -56,7 +58,8 @@ const AuthenticatedApp = () => {
   // Google OAuth does not collect a Revex username at registration. Require
   // one on the onboarding screen before letting that account into the app.
   const needsUsername = !user?.display_name?.trim();
-  if (isAuthenticated && needsUsername && location.pathname !== '/onboarding') {
+  const isLegalPage = ['/cookies-policy', '/terms-and-conditions', '/privacy-policy'].includes(location.pathname);
+  if (isAuthenticated && needsUsername && location.pathname !== '/onboarding' && !isLegalPage) {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -69,6 +72,7 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/cookies-policy" element={<CookiesPolicy />} />
       <Route path="/" element={<Feed />} />
       <Route path="/home" element={<Home />} />
       <Route path="/watch" element={<Watch />} />
@@ -99,6 +103,7 @@ function App() {
         <Router>
           <ScrollToTop />
           <AuthenticatedApp />
+          <CookieConsent />
         </Router>
         <Toaster />
       </QueryClientProvider>

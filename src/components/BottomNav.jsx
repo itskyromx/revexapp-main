@@ -1,8 +1,10 @@
 import { NavLink } from "react-router-dom";
 import { Home, Plus, Search, Inbox, User } from "lucide-react";
 import useUnreadNotifications from "@/hooks/useUnreadNotifications";
+import { useI18n } from "@/lib/i18n";
 
 export default function BottomNav({ overlay = false }) {
+  const { t } = useI18n();
   const unread = useUnreadNotifications();
   const items = [
     { to: "/", icon: Home, label: "Home", end: true },
@@ -32,7 +34,7 @@ export default function BottomNav({ overlay = false }) {
                   <span className="flex items-center justify-center w-9 h-9 rounded-full bg-card border-2 border-border shadow-brutal">
                     <Plus className="w-5 h-5 text-foreground" strokeWidth={3} />
                   </span>
-                  <span className={`text-[9px] font-heading font-bold uppercase tracking-wide ${overlay ? "text-white" : "text-foreground"}`}>{label}</span>
+                  <span className={`text-[9px] font-heading font-bold uppercase tracking-wide ${overlay ? "text-white" : "text-foreground"}`}>{t(label)}</span>
                 </span>
               ) : (
                 <>
@@ -48,7 +50,7 @@ export default function BottomNav({ overlay = false }) {
                     )}
                   </span>
                   <span className={`text-[9px] font-heading font-bold uppercase tracking-wide ${isActive ? "text-brand-red" : inactiveText}`}>
-                    {label}
+                    {t(label)}
                   </span>
                 </>
               )
