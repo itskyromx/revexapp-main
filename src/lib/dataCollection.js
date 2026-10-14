@@ -47,7 +47,7 @@ export const DATA_COLLECTION_AREAS = [
   },
   {
     title: "Marketplace and support",
-    details: "Offers, orders, shipping details, reviews, payout status, drop-off codes, reports and moderation records. Payment and payout details are handled through Stripe when those features are used.",
+    details: "Offers, orders, delivery country (Portugal or Spain), delivery addresses, buyer-selected collection point names and map coordinates, reviews, payout status, drop-off codes, reports and moderation records. Delivery details are shared with the seller and configured carrier to fulfil an order. Stripe processes card/payment details and the selected payment type; Revex stores a Stripe customer reference and payment-method references/summary so you can manage saved cards. Card data stays with Stripe.",
   },
   {
     title: "Technical and security data",
@@ -78,13 +78,23 @@ export const THIRD_PARTY_SERVICES = [
   },
   {
     name: "Stripe",
-    purpose: "Payment checkout and seller payout onboarding.",
-    when: "When you start a checkout or payout flow.",
+    purpose: "Hosted payment checkout, MB WAY/card/eligible Apple Pay transactions, saved card management and seller payout onboarding.",
+    when: "When you start a checkout, add/manage a saved card or set up seller payouts. Stripe receives the payment information and required device/browser details directly in its hosted checkout.",
   },
   {
     name: "OpenAI",
     purpose: "Generates multilingual text embeddings for semantic product search and recommendations. Product descriptions, search queries and selected style/brand preferences are sent for this processing; Revex stores only product vectors and product metadata in its Supabase Vector Bucket.",
     when: "When you publish an article, search for products or receive personalized recommendations.",
+  },
+  {
+    name: "OpenStreetMap",
+    purpose: "Displays the map used to choose a collection point. The map provider receives the browser's IP address and requested map tile areas; selected coordinates are saved by Revex with the order and are not sent to OpenStreetMap by the map picker.",
+    when: "Only when you open the map to choose a collection point.",
+  },
+  {
+    name: "Delivery carriers",
+    purpose: "Receive delivery address or collection point details and order fulfilment information when carrier integrations are configured and an order requires shipment.",
+    when: "When the seller fulfils an order using a connected carrier.",
   },
   {
     name: "Social platforms",

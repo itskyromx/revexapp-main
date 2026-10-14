@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'r
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider } from '@/lib/AuthContext';
 import { useAuth } from '@/lib/useAuth';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import Login from '@/pages/Login';
@@ -82,8 +83,10 @@ const AuthenticatedApp = () => {
       <Route path="/reports" element={<Reports />} />
       <Route path="/orders" element={<Orders />} />
       <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/upload" element={<UploadPage />} />
-      <Route path="/upload/:draftId" element={<UploadPage />} />
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`} replace />} />}>
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/upload/:draftId" element={<UploadPage />} />
+      </Route>
       <Route path="/profile/:userId" element={<Profile />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/item/:itemId" element={<ItemDetail />} />

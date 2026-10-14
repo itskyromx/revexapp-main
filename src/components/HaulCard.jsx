@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
 import { updatePostCounter, togglePostLike } from "@/lib/postStats";
+import { toast } from "@/components/ui/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import BoostBadge from "@/components/BoostBadge";
 import PostOwnerActions from "@/components/PostOwnerActions";
 
@@ -43,6 +45,17 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
   const saved = isSaved("post", post.id);
   const isOwner = Boolean(user && post.created_by_id === user.id);
+
+  const requireLogin = () => {
+    if (user?.id) return false;
+    const returnTo = `${window.location.pathname}${window.location.search}`;
+    toast({
+      title: "Login required",
+      description: "Log in first to like, save, message, or share posts.",
+      action: <ToastAction altText="Log in" onClick={() => navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)}>Log in</ToastAction>,
+    });
+    return true;
+  };
 
   const media = (post.image_urls || []).map((url) => ({ type: "image", url }));
   const current = media[mediaIndex];
@@ -82,6 +95,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
   // The single like path — used by the heart button and by a double tap.
   const applyLike = async (next) => {
+    if (requireLogin()) return;
     if (busyAction || next === liked) return;
     setBusyAction("like");
     const likedSet = loadLiked();
@@ -133,6 +147,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
   };
 
   const toggleSave = async () => {
+    if (requireLogin()) return;
     if (busyAction) return;
     setBusyAction("save");
     try {
@@ -151,11 +166,15 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
   };
 
   const openChat = () => {
+    if (requireLogin()) return;
     const itemId = post.item_ids?.[0];
     navigate(`/chat/${post.created_by_id}${itemId ? `?itemId=${itemId}` : ""}`);
   };
 
-  const share = () => setShareOpen(true);
+  const share = () => {
+    if (requireLogin()) return;
+    setShareOpen(true);
+  };
 
   const go = (delta) => {
     setSlideDirection(delta);

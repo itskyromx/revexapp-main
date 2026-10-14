@@ -280,22 +280,6 @@ export default function Search() {
           </div>
         ) : (
           <>
-            {/* Hot searches */}
-            <section className="mb-6">
-              <h3 className="font-display text-lg uppercase flex items-center gap-2 mb-3">
-                <Flame className="w-4 h-4 text-brand-red" /> {t("Hot searches")}
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {hotSearches.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setQuery(t)}
-                    className="acid-chip bg-card hover:bg-brand-red hover:text-white">
-                    #{t}
-                  </button>
-                ))}
-              </div>
-            </section>
 
             <section className="mb-6">
               <h3 className="font-display text-lg uppercase flex items-center gap-2 mb-3"><TrendingUp className="w-4 h-4" /> Shop by category</h3>
@@ -316,38 +300,6 @@ export default function Search() {
               </div>
               {catalogItems.length > 0 ? <div className="grid grid-cols-2 gap-2 mt-3">{catalogItems.slice(0, 8).map((item) => <ItemCard key={item.id} item={item} onClick={() => navigate(`/item/${item.id}`)} />)}</div> : <p className="text-xs text-muted-foreground mt-3">No articles match these filters yet.</p>}
             </section>
-
-            {/* Trending hauls */}
-            {posts.length > 0 && (
-              <section>
-                <h3 className="font-display text-lg uppercase mb-3">{t("Trending hauls")}</h3>
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3 -mx-4 px-4">
-                  {HAUL_FILTERS.map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setHaulFilter(f)}
-                      className={`acid-chip shrink-0 ${haulFilter === f ? "bg-brand-red text-white border-brand-red" : "bg-card hover:bg-muted"}`}>
-                      {f}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {filteredPosts.length === 0 ? (
-                    <p className="col-span-2 py-8 text-center text-sm text-muted-foreground">No hauls match "{haulFilter}".</p>
-                  ) : filteredPosts.slice(0, 4).map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => navigate("/watch")}
-                      className="aspect-[3/4] border-[3px] border-border bg-black relative overflow-hidden">
-                      {p.image_urls?.[0] ? <img src={p.image_urls[0]} className="w-full h-full object-cover opacity-90" alt="" /> :
-                        <div className="w-full h-full grid-bg" />}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                      <p className="absolute bottom-2 left-2 right-2 font-display text-white text-xs uppercase line-clamp-2">{p.haul_title}</p>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
           </>
         )}
       </div>

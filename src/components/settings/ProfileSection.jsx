@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTheme } from "next-themes";
 import { supabase, uploadPublicFile } from "@/api/supabaseClient";
-import { Check, Loader2, Monitor, Moon, Sun, Upload } from "lucide-react";
+import { Check, Loader2, Moon, Sun, Upload } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import { displayName } from "@/lib/revex";
 import { isUsernameAvailable, isValidUsername, normalizeUsername } from "@/lib/usernames";
@@ -20,10 +20,6 @@ export default function ProfileSection({ user, setUser }) {
 
   const toggleTheme = () => {
     setTheme(isDark ? "light" : "dark");
-  };
-
-  const useDeviceTheme = () => {
-    setTheme("system");
   };
 
   const pickAvatar = async (file) => {
@@ -134,15 +130,6 @@ export default function ProfileSection({ user, setUser }) {
           }`}>
           <span className="w-5 h-5 rounded-full bg-card" />
         </span>
-      </button>
-
-      <button
-        type="button"
-        onClick={useDeviceTheme}
-        className="w-full flex items-center gap-2 border-2 border-border px-3 py-2 text-left text-xs font-bold uppercase"
-      >
-        <Monitor className="w-4 h-4" />
-        {t("Use device theme")}
       </button>
 
       {error && <p className="text-xs text-brand-red">{error}</p>}
