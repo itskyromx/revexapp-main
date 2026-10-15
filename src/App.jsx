@@ -87,11 +87,15 @@ const AuthenticatedApp = () => {
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/upload/:draftId" element={<UploadPage />} />
       </Route>
-      <Route path="/profile/:userId" element={<Profile />} />
-      <Route path="/profile" element={<Profile />} />
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`} replace />} />}>
+        <Route path="/profile/:userId" element={<Profile />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
       <Route path="/item/:itemId" element={<ItemDetail />} />
-      <Route path="/inbox" element={<Inbox />} />
-      <Route path="/chat/:userId" element={<Chat />} />
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`} replace />} />}>
+        <Route path="/inbox" element={<Inbox />} />
+        <Route path="/chat/:userId" element={<Chat />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

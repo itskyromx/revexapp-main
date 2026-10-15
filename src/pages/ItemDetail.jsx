@@ -175,7 +175,7 @@ export default function ItemDetail() {
     }}).catch(() => {});
   };
 
-  const canBuy = item?.status === "available" && !isOwner && !blockedRelationship;
+  const canBuy = item?.status === "available" && !isOwner && !blockedRelationship && user;
   const productImages = post?.image_urls?.length ? post.image_urls : item?.image_url ? [item.image_url] : [];
   const currentImage = productImages[imageIndex] || productImages[0];
 
@@ -322,16 +322,22 @@ export default function ItemDetail() {
               </button>
             )}
             <div className="grid grid-cols-2 gap-2">
-              {item.accepts_offers && !blockedRelationship && (
+              {item.accepts_offers && !blockedRelationship && user && (
                 <button onClick={() => setShowOffer(true)} className="acid-btn bg-muted text-foreground"><Tag className="w-4 h-4" /> Make Offer</button>
               )}
-              {!blockedRelationship && (
+              {!blockedRelationship && user && (
                 <button onClick={() => item.created_by_id && navigate(`/chat/${item.created_by_id}?itemId=${item.id}`)}
                   className={`acid-btn bg-foreground text-background ${item.accepts_offers ? "" : "col-span-2"}`}>
                   <MessageCircle className="w-4 h-4" /> Message Seller
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {!user && (
+          <div className="mt-4 acid-card-sm bg-card p-3">
+            <p className="text-sm text-muted-foreground">Sign in to make offers and message sellers.</p>
           </div>
         )}
 

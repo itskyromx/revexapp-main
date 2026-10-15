@@ -238,7 +238,6 @@ export default function UploadPage() {
         <section className="acid-card p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1"><span className="acid-label">Price (€)</span><input className="acid-input" type="number" min="0.01" step="0.01" value={product.price} onChange={(event) => update("price", event.target.value)} /></label>
-            <label className="space-y-1"><span className="acid-label">Shipping (€)</span><input className="acid-input" type="number" min="0" step="0.01" value={product.shipping_price} onChange={(event) => update("shipping_price", event.target.value)} /></label>
             <label className="space-y-1"><span className="acid-label">Size</span><input className="acid-input" maxLength={24} placeholder="M, 38, One size" value={product.size} onChange={(event) => update("size", event.target.value)} /></label>
             <label className="space-y-1"><span className="acid-label">Condition</span><select className="acid-input" value={product.condition} onChange={(event) => update("condition", event.target.value)}><option value="new_with_tags">New with tags</option><option value="like_new">Like new</option><option value="good">Good</option><option value="fair">Fair</option></select></label>
           </div>

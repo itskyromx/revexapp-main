@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { ArrowLeft } from "lucide-react";
+import { safeReturnTo } from "@/lib/authReturnTo";
 
 export default function AuthLayout({ icon: Icon, title, subtitle, footer, children, showBack = false }) {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export default function AuthLayout({ icon: Icon, title, subtitle, footer, childr
       {showBack && typeof document !== "undefined" && createPortal(
         <button
           type="button"
-          onClick={() => navigate("/profile")}
+          onClick={() => navigate(-1)}
           aria-label="Go back"
           title="Go back"
           style={{ top: "max(1rem, env(safe-area-inset-top))", right: "1rem", zIndex: 1000 }}

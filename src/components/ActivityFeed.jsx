@@ -114,17 +114,6 @@ export default function ActivityFeed() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="mt-6 text-center">
-        <p className="font-display text-lg uppercase">{t("Sign in to view activity")}</p>
-        <button onClick={() => navigate("/login")} className="acid-btn bg-brand-red text-white px-4 py-2 mt-3 text-xs">
-          {t("Sign in")}
-        </button>
-      </div>
-    );
-  }
-
   if (loadError) {
     return (
       <div className="mt-6 text-center">

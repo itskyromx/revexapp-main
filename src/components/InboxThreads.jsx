@@ -156,17 +156,6 @@ export default function InboxThreads() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="mt-6 text-center">
-        <p className="font-display text-lg uppercase">Sign in to view chats</p>
-        <button onClick={() => navigate("/login")} className="acid-btn bg-brand-red text-white px-4 py-2 mt-3 text-xs">
-          Sign in
-        </button>
-      </div>
-    );
-  }
-
   if (loadError) {
     return (
       <div className="mt-6 text-center">
