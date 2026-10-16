@@ -25,7 +25,7 @@ export default function DeletePostDialog({ post, onClose, onDeleted }) {
       }
       onDeleted();
     } catch (e) {
-      setError(e.message || "Could not delete the post.");
+      setError(e.message || "Could not delete the item.");
       setBusy("");
     }
   };
@@ -34,7 +34,7 @@ export default function DeletePostDialog({ post, onClose, onDeleted }) {
     <AlertDialog open onOpenChange={(next) => { if (!next) onClose(); }}>
       <AlertDialogContent className="border-[3px] border-border">
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-display uppercase">Delete this post?</AlertDialogTitle>
+          <AlertDialogTitle className="font-display uppercase">Delete this item?</AlertDialogTitle>
           <AlertDialogDescription>
             "{post.haul_title}" disappears from feeds, your profile and anyone's saved list.
             Sold items and live orders are always kept.
@@ -47,14 +47,7 @@ export default function DeletePostDialog({ post, onClose, onDeleted }) {
             disabled={!!busy}
             className="acid-btn bg-brand-red text-white w-full disabled:opacity-60"
           >
-            {busy === "items" ? "Deleting…" : "Delete post + unsold items"}
-          </button>
-          <button
-            onClick={() => run(false)}
-            disabled={!!busy}
-            className="acid-btn bg-muted text-foreground w-full disabled:opacity-60"
-          >
-            {busy === "keep" ? "Deleting…" : "Delete post, keep items on sale"}
+            {busy === "items" ? "Deleting…" : "Delete item"}
           </button>
         </div>
 

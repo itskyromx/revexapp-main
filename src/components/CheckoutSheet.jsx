@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { X, ShieldCheck, Loader2, Truck, ChevronDown, CreditCard, Apple, MapPin, House, PackageCheck } from "lucide-react";
+import { X, ShieldCheck, Loader2, Truck, ChevronDown, CreditCard, MapPin, House, PackageCheck } from "lucide-react";
 import { orderTotals, formatMoney, isEmbedded } from "@/lib/payments";
 import PickupPointMap from "@/components/PickupPointMap";
+import mbWayLogo from "@/assets/mbway.jpg";
+import applePayLogo from "@/assets/apple_pay.png";
 
 function PaymentIcon({ method }) {
-  if (method === "mb_way") return <span aria-hidden="true" className="inline-flex h-6 min-w-12 items-center justify-center rounded bg-[#ed1c24] px-1 text-[9px] font-black tracking-tight text-white">MB WAY</span>;
-  if (method === "apple_pay") return <span aria-hidden="true" className="inline-flex items-center gap-0.5"><Apple className="h-5 w-5 fill-current" /><span className="text-sm font-semibold normal-case">Pay</span></span>;
+  if (method === "mb_way") return <img src={mbWayLogo} alt="" className="h-6 w-10 rounded object-contain" />;
+  if (method === "apple_pay") return <img src={applePayLogo} alt="" className="h-6 w-10 rounded object-contain" />;
   return <CreditCard className="h-5 w-5" />;
 }
 
