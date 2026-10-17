@@ -32,11 +32,6 @@ export default function OrderCard({ order, role, busy, onPay, onConfirm, review,
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground">
-        <ShieldCheck className="w-3.5 h-3.5" />
-        <span>Protected by Buyer Protection · fee {formatMoney(order.buyer_protection_fee)}</span>
-      </div>
-
       {role === "seller" && order.delivery_type === "pickup" && order.pickup_location && (
         <p className="text-[11px] text-muted-foreground mt-2">
           Collection point: {order.pickup_location.name} — {order.pickup_location.address}, {order.pickup_location.country || order.delivery_country}
@@ -44,9 +39,6 @@ export default function OrderCard({ order, role, busy, onPay, onConfirm, review,
             <> · <a className="underline" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${encodeURIComponent(order.pickup_location.lat)}&mlon=${encodeURIComponent(order.pickup_location.lng)}#map=16/${encodeURIComponent(order.pickup_location.lat)}/${encodeURIComponent(order.pickup_location.lng)}`}>View map</a></>
           )}
         </p>
-      )}
-      {role === "seller" && order.delivery_type !== "pickup" && order.shipping_address && (
-        <p className="text-[11px] text-muted-foreground mt-2">Ship to: {order.shipping_address}</p>
       )}
 
       {role === "buyer" && ["paid", "in_transit", "completed"].includes(order.status) && (
