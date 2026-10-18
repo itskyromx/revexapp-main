@@ -222,7 +222,6 @@ export default function ItemDetail() {
               </div>
               <div className="text-right shrink-0">
                 <p className="font-display text-3xl">{formatPrice(item.price)}</p>
-                <p className="text-xs text-muted-foreground">+ {formatPrice(item.shipping_price)} ship</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5 mt-3">

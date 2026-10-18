@@ -452,7 +452,7 @@ export default function Chat() {
     displayName(other) ||
     safeMessages.find((m) => m.sender_id === userId)?.sender_name ||
     offers.find((o) => o.buyer_id === userId)?.buyer_name ||
-    "User";
+    "Unknown";
 
   const messageToActHasReply = Boolean(messageToAct && safeMessages.some((message) => (
     message.sender_id === messageToAct.receiver_id &&

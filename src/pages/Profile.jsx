@@ -239,7 +239,7 @@ export default function Profile() {
       .map((row) => [row.follower_id, row.follower_name])
   );
 
-  const name = displayName(profile) || "Creator";
+  const name = displayName(profile) || "Unknown";
   const locked = Boolean(profile?.private_account) && !isSelf && !isFollowing;
 
   if (userLoading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
