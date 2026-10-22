@@ -137,7 +137,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
   const handleMediaTap = () => {
     if (Date.now() < ignoreTapUntilRef.current) return;
     const now = Date.now();
-    if (now - lastTapRef.current < 300) {
+    if (now - lastTapRef.current < 400) {
       lastTapRef.current = 0;
       showBurst();
       if (!liked) applyLike(true);

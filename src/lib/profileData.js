@@ -15,7 +15,7 @@ export async function loadProfilesById(ids) {
   return Object.fromEntries((data || []).map((profile) => [profile.id, profile]));
 }
 
-export function profileLabel(profile, fallback = "Creator") {
+export function profileLabel(profile, fallback = "Unknown") {
   return profile?.display_name || profile?.full_name || fallback;
 }
 
@@ -26,7 +26,7 @@ export async function enrichPostCreators(posts) {
       const profile = profiles[post.created_by_id];
       const fallbackName = post.creator_name && !post.creator_name.includes("@")
         ? post.creator_name
-        : "Creator";
+        : "Unknown";
       return {
         ...post,
         creator_name: profileLabel(profile, fallbackName),

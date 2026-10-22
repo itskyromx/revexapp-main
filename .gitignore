@@ -7,3 +7,8 @@
 
 # dependencies
 node_modules/
+
+supabase\functions
+.agents\skills
+.claude\skills
+AGENTS.md
