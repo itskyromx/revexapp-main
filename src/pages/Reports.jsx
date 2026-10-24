@@ -268,7 +268,7 @@ export default function Reports() {
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={removeHaul} disabled={busy || !rule}
               className="bg-brand-red text-white border-[3px] border-border font-display uppercase">
-              {busy ? "Removing…" : "Remove haul"}
+              {busy ? "Removing…" : "Remove item"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

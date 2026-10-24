@@ -276,7 +276,7 @@ export default function Chat() {
         .insert({
           sender_id: me.id,
           receiver_id: userId,
-          sender_name: displayName(me) || me.email,
+          sender_name: displayName(me) || "Unknown",
           text: body,
           item_id: itemId || null,
           item_title: item?.title || null,

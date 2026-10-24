@@ -6,8 +6,8 @@ import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, Bookma
 import Avatar from "@/components/Avatar";
 import OfferSheet from "@/components/OfferSheet";
 import CheckoutSheet from "@/components/CheckoutSheet";
-import TagChips from "@/components/TagChips";
-import { formatPrice, CONDITION_LABELS, normalizeTags } from "@/lib/revex";
+import EditItemSheet from "@/components/EditItemSheet";
+import { formatPrice, CONDITION_LABELS } from "@/lib/revex";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
 import BottomNav from "@/components/BottomNav";
@@ -27,8 +27,6 @@ export default function ItemDetail() {
   const [counterFor, setCounterFor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editTags, setEditTags] = useState([]);
-  const [saving, setSaving] = useState(false);
   const [cancelNotice, setCancelNotice] = useState("");
   const [blockedRelationship, setBlockedRelationship] = useState(false);
   const [recommendedItems, setRecommendedItems] = useState([]);
@@ -78,12 +76,6 @@ export default function ItemDetail() {
     return () => { active = false; };
   }, [item?.id, item?.category]);
 
-  useEffect(() => {
-    if (item) {
-      setEditTags(item.tags || []);
-    }
-  }, [item]);
-
   // They came back from Stripe without paying: close the unpaid order, free the
   // item, and clear the marker so nothing can bounce them back to Stripe.
   useEffect(() => {
@@ -96,17 +88,6 @@ export default function ItemDetail() {
   }, [itemId]);
 
   const isOwner = user && item && user.id === item.created_by_id;
-
-  const saveEdit = async () => {
-    setSaving(true);
-    try {
-      const tags = normalizeTags(editTags);
-      await supabase.from('items').update({ tags }).eq('id', item.id);
-      setItem((it) => ({ ...it, tags }));
-      setEditing(false);
-    } catch (e) { console.error(e); }
-    setSaving(false);
-  };
 
   const submitOffer = async ({ amount, message }) => {
     const { data: o, error } = await supabase.from('offers').insert({
@@ -227,7 +208,6 @@ export default function ItemDetail() {
             <div className="flex flex-wrap gap-1.5 mt-3">
               <span className="acid-chip bg-muted">Size {item.size || "—"}</span>
               <span className="acid-chip bg-card">{CONDITION_LABELS[item.condition]}</span>
-              {item.accepts_offers && <span className="acid-chip bg-brand-red text-white">Takes offers</span>}
             </div>
             {item.tags && item.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -235,11 +215,6 @@ export default function ItemDetail() {
               </div>
             )}
             {item.description && <p className="text-sm mt-4 whitespace-pre-wrap">{item.description}</p>}
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {item.gender && <span className="acid-chip bg-card capitalize">{item.gender === "men" ? "Men" : item.gender === "women" ? "Women" : "Unisex"}</span>}
-              {item.subcategory && <span className="acid-chip bg-card">{item.subcategory}</span>}
-              {item.styles?.map((style) => <span key={style} className="acid-chip bg-muted">{style}</span>)}
-            </div>
             {item.created_by_id && (
               <button onClick={() => navigate(`/profile/${item.created_by_id}`)} className="flex items-center gap-2 mt-4 w-full acid-card-sm bg-muted p-2">
                 <Avatar name={item.seller_name} src={item.seller_avatar} size={36} />
@@ -256,21 +231,10 @@ export default function ItemDetail() {
           <div className="mt-4 acid-card p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-display uppercase text-lg">Edit Item</h3>
-              <button onClick={() => setEditing((v) => !v)} className="acid-btn bg-muted text-foreground px-3 py-1 text-xs">
-                {editing ? "Close" : <><Pencil className="w-3.5 h-3.5" /> Edit</>}
+              <button onClick={() => setEditing(true)} className="acid-btn bg-muted text-foreground px-3 py-1 text-xs">
+                <Pencil className="w-3.5 h-3.5" /> Edit
               </button>
             </div>
-            {editing && (
-              <>
-                <div>
-                  <span className="acid-label">Tags</span>
-                  <div className="mt-1"><TagChips value={editTags} onChange={setEditTags} /></div>
-                </div>
-                <button disabled={saving} onClick={saveEdit} className="acid-btn bg-brand-red text-white w-full">
-                  {saving ? "Saving..." : "Save Changes"}
-                </button>
-              </>
-            )}
           </div>
         )}
 
@@ -358,6 +322,13 @@ export default function ItemDetail() {
         </div>
       </div>
 
+      {editing && isOwner && <EditItemSheet key={item.id} item={item} post={post} userId={user.id}
+        onClose={() => setEditing(false)} onSaved={(updatedItem, updatedPost) => {
+          setItem(updatedItem);
+          setPost(updatedPost);
+          setImageIndex(0);
+          setEditing(false);
+        }} />}
       {showOffer && <OfferSheet item={item} onClose={() => setShowOffer(false)} onSubmitted={submitOffer} />}
       {counterFor && (
         <OfferSheet
