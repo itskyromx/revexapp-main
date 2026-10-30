@@ -266,7 +266,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
               <button onClick={() => onOpenProfile?.(post.created_by_id)} className="font-display text-sm text-white drop-shadow leading-none">
                 @{post.creator_name?.split(" ")[0]?.toLowerCase() || "revexuser"}
               </button>
-              <span className="text-[10px] text-white/70 font-heading">{timeAgo(post.created_at)} ago</span>
+              <span className="text-[10px] text-white/70 font-heading">{timeAgo(post.created_at)}</span>
             </div>
           </div>
 
