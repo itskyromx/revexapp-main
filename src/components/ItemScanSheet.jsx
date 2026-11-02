@@ -6,7 +6,7 @@ import TagChips from "@/components/TagChips";
 const CATEGORIES = ["tops", "bottoms", "dresses", "outerwear", "shoes", "accessories", "other"];
 const CONDITIONS = ["new_with_tags", "like_new", "good", "fair"];
 
-export default function HaulScanSheet({ suggestions, loading, error, onEdit, onAdd, onAddAll, onClose }) {
+export default function ItemScanSheet({ suggestions, loading, error, onEdit, onAdd, onAddAll, onClose }) {
   const [expanded, setExpanded] = useState(null);
   const remaining = suggestions.filter((s) => !s.added);
 
@@ -27,7 +27,7 @@ export default function HaulScanSheet({ suggestions, loading, error, onEdit, onA
       {loading ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <Loader2 className="w-9 h-9 animate-spin text-brand-red" strokeWidth={3} />
-          <p className="font-heading uppercase text-sm text-muted-foreground">Analyzing your haul…</p>
+          <p className="font-heading uppercase text-sm text-muted-foreground">Analyzing your items…</p>
         </div>
       ) : error ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">

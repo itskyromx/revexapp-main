@@ -115,7 +115,7 @@ export default function CameraRecorder({ onRecorded, onClose }) {
       const ext = blobRef.current.type.includes("mp4") ? "mp4" : "webm";
       const file = new File(
         [blobRef.current],
-        `haul-${Date.now()}.${ext}`,
+        `item-${Date.now()}.${ext}`,
         { type: blobRef.current.type }
       );
       await onRecorded(file, previewUrl);

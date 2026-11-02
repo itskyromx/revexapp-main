@@ -22,8 +22,8 @@ export const COOKIE_CATEGORIES = [
   },
   {
     key: "personalization",
-    title: "Semantic search and recommendations",
-    description: "Allows product descriptions, searches and selected style/brand preferences to be processed by OpenAI for multilingual search and recommendations.",
+    title: "Search, recommendations and item analysis",
+    description: "Allows item descriptions, searches and selected style/brand preferences to be processed by OpenAI for search and recommendations, and selected video frames for optional item analysis.",
     required: false,
   },
 ];
@@ -35,7 +35,7 @@ export const DATA_COLLECTION_AREAS = [
   },
   {
     title: "Content and media",
-    details: "Posts, captions, tags, listings, item details, photos, videos, avatars and files uploaded to the platform's media storage.",
+    details: "Items, descriptions, tags and listing details, photos, videos, avatars and files uploaded to the platform's media storage.",
   },
   {
     title: "Platform activity",
@@ -43,7 +43,7 @@ export const DATA_COLLECTION_AREAS = [
   },
   {
     title: "Semantic search and recommendations",
-    details: "When used, the product search query, public article descriptions and the account's selected style and brand preferences are sent to OpenAI to generate multilingual embeddings. Revex stores product vectors and limited product metadata in Supabase Vector Buckets; personal preference vectors are generated per request and are not stored.",
+    details: "With personalization consent, item search queries, public descriptions and selected style and brand preferences are sent to OpenAI for multilingual embeddings. Optional video analysis sends selected frames and their image URLs to suggest item details. Revex stores item vectors and limited metadata in Supabase Vector Buckets; personal preference vectors are generated per request and are not stored.",
   },
   {
     title: "Marketplace and support",
@@ -83,8 +83,8 @@ export const THIRD_PARTY_SERVICES = [
   },
   {
     name: "OpenAI",
-    purpose: "Generates multilingual text embeddings for semantic product search and recommendations. Product descriptions, search queries and selected style/brand preferences are sent for this processing; Revex stores only product vectors and product metadata in its Supabase Vector Bucket.",
-    when: "When you publish an article, search for products or receive personalized recommendations.",
+    purpose: "Generates multilingual text embeddings for item search and recommendations. Item descriptions, search queries and selected style/brand preferences are sent for this processing; Revex stores only item vectors and metadata in its Supabase Vector Bucket. Optional item analysis sends selected video frames and their image URLs to suggest item details.",
+    when: "Only with personalization consent, when you publish an item, search, receive recommendations or explicitly request video analysis.",
   },
   {
     name: "OpenStreetMap",
@@ -98,7 +98,7 @@ export const THIRD_PARTY_SERVICES = [
   },
   {
     name: "Social platforms",
-    purpose: "Receive a post link and any message text you choose to share.",
+    purpose: "Receive a item link and any message text you choose to share.",
     when: "Only when you select a sharing destination.",
   },
 ];

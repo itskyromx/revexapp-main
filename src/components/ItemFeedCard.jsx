@@ -4,17 +4,17 @@ import { Heart, Share2, MessageCircle, Bookmark, ChevronLeft, ChevronRight, More
 import { supabase } from "@/api/supabaseClient";
 import Avatar from "@/components/Avatar";
 import ShareSheet from "@/components/ShareSheet";
-import { timeAgo, loadLiked, saveLiked } from "@/lib/revex";
+import { timeAgo } from "@/lib/revex";
 import { useAuth } from "@/lib/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
-import { updatePostCounter, togglePostLike } from "@/lib/postStats";
+import { refreshItemCounters, recordItemView, toggleItemLike } from "@/lib/itemStats";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import BoostBadge from "@/components/BoostBadge";
-import PostOwnerActions from "@/components/PostOwnerActions";
+import ItemOwnerActions from "@/components/ItemOwnerActions";
 
-function ActionButton({ icon: Icon, count, onClick, active, disabled = false, activeClass = "fill-brand-red text-brand-red" }) {
+function ActionButton({ icon: Icon, count, onClick, active = false, disabled = false, activeClass = "fill-brand-red text-brand-red" }) {
   return (
     <button onClick={onClick} disabled={disabled} className="flex flex-col items-center gap-1 disabled:opacity-50">
       <Icon
@@ -26,38 +26,45 @@ function ActionButton({ icon: Icon, count, onClick, active, disabled = false, ac
   );
 }
 
-export default function HaulCard({ post, onOpenProfile, chromeVisible = true, onToggleChrome, onChanged, onDeleted }) {
+export default function ItemFeedCard({ item, onOpenProfile, chromeVisible = true, onToggleChrome = undefined, onChanged = undefined, onDeleted = undefined }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isSaved } = useSaved(user?.id);
   const [mediaIndex, setMediaIndex] = useState(0);
-  const [liked, setLiked] = useState(() => loadLiked().has(post.id));
-  const [likeCount, setLikeCount] = useState(post.like_count || 0);
-  const [saveCount, setSaveCount] = useState(post.bookmark_count || 0);
-  const [shareCount, setShareCount] = useState(post.share_count || 0);
+  const [likeState, setLikeState] = useState(null);
+  const viewer = useRef({ userId: user?.id, itemId: item.id });
+  viewer.current = { userId: user?.id, itemId: item.id };
+  const liked = Boolean(user?.id && likeState?.userId === user.id && likeState?.itemId === item.id && likeState.liked);
+  const [likeCount, setLikeCount] = useState(item.like_count || 0);
+  const [saveCount, setSaveCount] = useState(item.bookmark_count || 0);
+  const [shareCount, setShareCount] = useState(item.share_count || 0);
   const [busyAction, setBusyAction] = useState(null);
-  const [caption, setCaption] = useState(post.caption || "");
-  const [tags, setTags] = useState(post.tags || []);
-  const [boostExpiresAt, setBoostExpiresAt] = useState(post.boost_expires_at || "");
+  const [caption, setCaption] = useState(item.description || "");
+  const [tags, setTags] = useState(item.tags || []);
+  const [boostExpiresAt, setBoostExpiresAt] = useState(item.boost_expires_at || "");
   const [expanded, setExpanded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [burst, setBurst] = useState(false);
 
-  const saved = isSaved("post", post.id);
-  const isOwner = Boolean(user && post.created_by_id === user.id);
+  const saved = isSaved("item", item.id);
+  const isOwner = Boolean(user && item.created_by_id === user.id);
+
+  useEffect(() => {
+    recordItemView(item.id).catch(error => console.error(error));
+  }, [item.id]);
 
   const requireLogin = () => {
     if (user?.id) return false;
     const returnTo = `${window.location.pathname}${window.location.search}`;
     toast({
       title: "Login required",
-      description: "Log in first to like, save, message, or share posts.",
+      description: "Log in first to like, save, message, or share items.",
       action: <ToastAction altText="Log in" onClick={() => navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)}>Log in</ToastAction>,
     });
     return true;
   };
 
-  const media = (post.image_urls || []).map((url) => ({ type: "image", url }));
+  const media = (item.image_urls?.length ? item.image_urls : item.image_url ? [item.image_url] : []).map((url) => ({ type: "image", url }));
   const current = media[mediaIndex];
 
   const captionLong = caption.length > 100;
@@ -71,21 +78,29 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
   useEffect(() => () => { if (burstTimer.current) clearTimeout(burstTimer.current); }, []);
 
   useEffect(() => {
-    if (!user?.id || !post.id) return;
+    if (!user?.id || !item.id) return;
     let active = true;
-    supabase.from("post_likes").select("post_id").eq("post_id", post.id).eq("user_id", user.id).maybeSingle()
-      .then(({ data, error }) => { if (!error && active) setLiked(Boolean(data)); })
+    Promise.resolve(supabase.from("item_likes").select("item_id").eq("item_id", item.id).eq("user_id", user.id).maybeSingle())
+      .then(({ data, error }) => {
+        if (!error && active) setLikeState({ userId: user.id, itemId: item.id, liked: Boolean(data) });
+      })
       .catch((error) => console.error(error));
     return () => { active = false; };
-  }, [post.id, user?.id]);
+  }, [item.id, user?.id]);
 
   useEffect(() => {
-    setLikeCount(post.like_count || 0);
-    setSaveCount(post.bookmark_count || 0);
-    setShareCount(post.share_count || 0);
-  }, [post.id, post.like_count, post.bookmark_count, post.share_count]);
+    setLikeCount(item.like_count || 0);
+    setSaveCount(item.bookmark_count || 0);
+    setShareCount(item.share_count || 0);
+  }, [item.id, item.like_count, item.bookmark_count, item.share_count]);
 
-  const reconcilePost = async (updated) => {
+  useEffect(() => {
+    setMediaIndex(0);
+    setCaption(item.description || "");
+    setTags(item.tags || []);
+  }, [item.id, item.description, item.tags, item.image_urls]);
+
+  const reconcileItem = async (updated) => {
     if (!updated) return;
     if (updated.like_count != null) setLikeCount(updated.like_count);
     if (updated.bookmark_count != null) setSaveCount(updated.bookmark_count);
@@ -98,23 +113,22 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
     if (requireLogin()) return;
     if (busyAction || next === liked) return;
     setBusyAction("like");
-    const likedSet = loadLiked();
+    const actingUserId = user.id;
     try {
-      const result = await togglePostLike(post.id);
+      const result = await toggleItemLike(item.id);
       if (!result) throw new Error("Like update did not return a result");
-      setLiked(result.liked);
-      if (result.liked) likedSet.add(post.id); else likedSet.delete(post.id);
-      saveLiked(likedSet);
+      if (viewer.current.userId !== actingUserId || viewer.current.itemId !== item.id) return;
+      setLikeState({ userId: actingUserId, itemId: item.id, liked: result.liked });
       setLikeCount(result.like_count || 0);
-      onChanged?.({ id: post.id, like_count: result.like_count });
-      if (result.liked && post.created_by_id) {
+      onChanged?.({ id: item.id, like_count: result.like_count });
+      if (result.liked && item.created_by_id) {
         supabase.functions.invoke("sendNotification", { body: {
-          recipientId: post.created_by_id,
-          content: `liked your post "${post.haul_title}"`,
+          recipientId: item.created_by_id,
+          content: `liked your item "${item.title}"`,
           type: "like",
-          targetType: "post",
-          targetId: post.id,
-          thumbnail: post.image_urls?.[0] || "",
+          targetType: "item",
+          targetId: item.id,
+          thumbnail: item.image_urls?.[0] || "",
           inAppOnly: true,
         }}).catch(() => {});
       }
@@ -153,11 +167,11 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
     try {
       if (!user?.id) return;
       const wasSaved = saved;
-      const next = await toggleBookmark(user.id, "post", post);
+      const next = await toggleBookmark(user.id, "item", item);
       if (next === wasSaved) return;
-      const updated = await updatePostCounter(post.id, "bookmark_count", next ? 1 : -1);
-      if (!updated) throw new Error("Bookmark update did not return a post");
-      await reconcilePost(updated);
+      const updated = (await refreshItemCounters([item.id]))[item.id];
+      if (!updated) throw new Error("Bookmark update did not return a item");
+      await reconcileItem(updated);
     } catch (error) {
       console.error(error);
     } finally {
@@ -167,8 +181,8 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
   const openChat = () => {
     if (requireLogin()) return;
-    const itemId = post.item_ids?.[0];
-    navigate(`/chat/${post.created_by_id}${itemId ? `?itemId=${itemId}` : ""}`);
+    const itemId = item.id;
+    navigate(`/chat/${item.created_by_id}${itemId ? `?itemId=${itemId}` : ""}`);
   };
 
   const share = () => {
@@ -208,7 +222,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
       {/* Media */}
       <div className="absolute inset-0">
         {current?.url ? (
-          <img key={`${mediaIndex}:${current.url}`} src={current.url} alt={post.haul_title} className="w-full h-full object-cover animate-post-slide" style={{ "--slide-from": `${slideDirection * 22}px` }} />
+          <img key={`${mediaIndex}:${current.url}`} src={current.url} alt={item.title} className="w-full h-full object-cover animate-item-slide" style={{ "--slide-from": `${slideDirection * 22}px` }} />
         ) : (
           <div className="w-full h-full grid-bg bg-muted" />
         )}
@@ -259,25 +273,25 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
         <>
           {/* Creator row */}
           <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
-            <button onClick={() => onOpenProfile?.(post.created_by_id)} className="flex items-center gap-2">
-              <Avatar name={post.creator_name} src={post.creator_avatar} size={36} ring />
+            <button onClick={() => onOpenProfile?.(item.created_by_id)} className="flex items-center gap-2">
+              <Avatar name={item.seller_name} src={item.seller_avatar} size={36} ring />
             </button>
             <div className="flex flex-col">
-              <button onClick={() => onOpenProfile?.(post.created_by_id)} className="font-display text-sm text-white drop-shadow leading-none">
-                @{post.creator_name?.split(" ")[0]?.toLowerCase() || "revexuser"}
+              <button onClick={() => onOpenProfile?.(item.created_by_id)} className="font-display text-sm text-white drop-shadow leading-none">
+                @{item.seller_name?.split(" ")[0]?.toLowerCase() || "revexuser"}
               </button>
-              <span className="text-[10px] text-white/70 font-heading">{timeAgo(post.created_at)}</span>
+              <span className="text-[10px] text-white/70 font-heading">{timeAgo(item.created_at)}</span>
             </div>
           </div>
 
           {/* Boost marker + the creator's own controls */}
           <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
-            <BoostBadge post={{ ...post, boost_expires_at: boostExpiresAt }} />
+            <BoostBadge item={{ ...item, boost_expires_at: boostExpiresAt }} />
             {isOwner && (
-              <PostOwnerActions
-                post={{ ...post, caption, tags, boost_expires_at: boostExpiresAt }}
+              <ItemOwnerActions
+                item={{ ...item, description: caption, tags, boost_expires_at: boostExpiresAt }}
                 onChanged={(updated) => {
-                  setCaption(updated.caption || "");
+                  setCaption(updated.description || "");
                   setTags(updated.tags || []);
                   setBoostExpiresAt(updated.boost_expires_at || "");
                   onChanged?.(updated);
@@ -290,7 +304,7 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
           {/* Right action rail — borderless, TikTok-style */}
           <div className="absolute right-3 bottom-28 z-20 flex flex-col items-center gap-5">
             <ActionButton icon={Heart} count={likeCount} onClick={toggleLike} active={liked} disabled={busyAction === "like"} />
-            <ActionButton icon={MessageCircle} count={null} onClick={openChat} />
+            {!isOwner && <ActionButton icon={MessageCircle} count={null} onClick={openChat} />}
             <ActionButton
               icon={Bookmark}
               count={saveCount}
@@ -304,9 +318,9 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
           {/* Bottom info — caption + tags only, raised above bottom nav */}
           <div className="absolute bottom-20 left-3 right-20 z-20">
-            {post.product && <button onClick={() => navigate(`/item/${post.product.id}`)} className="mb-2 inline-flex max-w-full items-center gap-2 border-2 border-white bg-black/60 px-2.5 py-1 text-left text-[11px] text-white">
-              <span className="font-heading font-bold uppercase truncate">{post.product.brand || post.product.title}</span>
-              <span className="shrink-0">{post.product.price ? `€${Number(post.product.price).toFixed(2)}` : "View item"}</span>
+            {item && <button onClick={() => navigate(`/item/${item.id}`)} className="mb-2 inline-flex max-w-full items-center gap-2 border-2 border-white bg-black/60 px-2.5 py-1 text-left text-[11px] text-white">
+              <span className="font-heading font-bold uppercase truncate">{item.brand || item.title}</span>
+              <span className="shrink-0">{item.price ? `€${Number(item.price).toFixed(2)}` : "View item"}</span>
             </button>}
             {caption && (
               <p className={`text-sm text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${expanded ? "" : "line-clamp-2"}`}>
@@ -333,10 +347,10 @@ export default function HaulCard({ post, onOpenProfile, chromeVisible = true, on
 
       {shareOpen && (
         <ShareSheet
-          post={post}
+          item={item}
           chromeVisible={chromeVisible}
           onToggleChrome={onToggleChrome ? handleToggleChrome : undefined}
-          onShared={(updated) => reconcilePost(updated)}
+          onShared={(updated) => reconcileItem(updated)}
           onClose={() => setShareOpen(false)}
         />
       )}

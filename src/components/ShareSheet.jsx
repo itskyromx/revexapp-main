@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { recordPostShare } from "@/lib/postStats";
+import { recordItemShare } from "@/lib/itemStats";
 import { X, Link2, Check, Flag, Loader2, ShieldAlert, ChevronLeft, Eye, EyeOff, Share2 } from "lucide-react";
 import SocialLogo from "@/components/SocialLogos";
 
@@ -26,7 +26,7 @@ const TARGETS = [
   { key: "other", label: "Other", native: true },
 ];
 
-export default function ShareSheet({ post, onClose, chromeVisible = true, onToggleChrome, onShared }) {
+export default function ShareSheet({ item, onClose, chromeVisible = true, onToggleChrome, onShared }) {
   const { user } = useCurrentUser();
   const [view, setView] = useState("share");
   const [copied, setCopied] = useState(false);
@@ -38,14 +38,14 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
   const [sent, setSent] = useState(false);
   const [handoff, setHandoff] = useState("");
 
-  const url = `${window.location.origin}/haul/${post.id}`;
-  const title = post.haul_title || "Check out this haul on Revex";
-  const thumb = post.image_urls?.[0] || "";
+  const url = `${window.location.origin}/item/${item.id}`;
+  const title = item.title || "Check out this item on Revex";
+  const thumb = item.image_urls?.[0] || "";
 
   const bumpShare = async () => {
     if (!user?.id) return;
-    const updated = await recordPostShare(post.id);
-    if (!updated) throw new Error("Share count update did not return a post");
+    const updated = await recordItemShare(item.id);
+    if (!updated) throw new Error("Share count update did not return a item");
     onShared?.(updated);
   };
 
@@ -95,7 +95,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
         return;
       }
       if (navigator.canShare && !navigator.canShare(payload)) {
-        setShareFailed("This phone cannot share this post from the current browser.");
+        setShareFailed("This phone cannot share this item from the current browser.");
         return;
       }
       setShareFailed("");
@@ -153,11 +153,12 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
     setSending(true);
     try {
       const { error } = await supabase.from('reports').insert({
-        post_id: post.id,
-        haul_title: post.haul_title || "",
-        haul_thumbnail: thumb,
-        creator_id: post.created_by_id || null,
-        creator_name: post.creator_name || "",
+        target_type: "item",
+        item_id: item.id,
+        item_title: item.title || "",
+        item_thumbnail: thumb,
+        creator_id: item.created_by_id || null,
+        creator_name: item.seller_name || "",
         reporter_id: user?.id || null,
         reporter_name: user?.full_name || user?.email || "Someone",
         reason,
@@ -198,7 +199,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
 
           {view === "share" && (
             <>
-              {/* Post preview */}
+              {/* Item preview */}
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-12 h-16 shrink-0 bg-white/10 border-2 border-white/25 overflow-hidden">
                   {thumb ? (
@@ -209,9 +210,9 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
                 </div>
                 <div className="min-w-0">
                   <p className="font-display uppercase text-sm leading-tight truncate">
-                    {post.haul_title || "Untitled post"}
+                    {item.title || "Untitled item"}
                   </p>
-                  <p className="text-xs text-white/60 truncate">@{post.creator_name?.split(" ")[0]?.toLowerCase() || "revexuser"}</p>
+                  <p className="text-xs text-white/60 truncate">@{item.seller_name?.split(" ")[0]?.toLowerCase() || "revexuser"}</p>
                 </div>
               </div>
 
@@ -233,7 +234,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
 
               {handoff && (
                 <p className="mt-4 text-center text-xs text-white/70">
-                  Link copied — open {handoff} and paste it into your post.
+                  Link copied — open {handoff} and paste it into your item.
                 </p>
               )}
 
@@ -258,7 +259,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
               )}
               {shareFailed && <p role="status" className="mt-2 text-xs text-white/70">{shareFailed}</p>}
 
-              {/* Hide / show the content around the post */}
+              {/* Hide / show the content around the item */}
               {onToggleChrome && (
                 <button
                   onClick={onToggleChrome}
@@ -270,7 +271,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
                       {chromeVisible ? "Hide content" : "Show content"}
                     </span>
                     <span className="block text-[11px] text-white/50">
-                      {chromeVisible ? "Play the post on its own" : "Bring back the controls"}
+                      {chromeVisible ? "Play the item on its own" : "Bring back the controls"}
                     </span>
                   </span>
                 </button>
@@ -282,7 +283,7 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
                 className="w-full mt-3 flex items-center justify-center gap-2 border-2 border-brand-red text-brand-red px-4 py-3"
               >
                 <Flag className="w-4 h-4" />
-                <span className="font-heading font-bold uppercase text-xs">Report this post</span>
+                <span className="font-heading font-bold uppercase text-xs">Report this item</span>
               </button>
             </>
           )}
@@ -293,13 +294,13 @@ export default function ShareSheet({ post, onClose, chromeVisible = true, onTogg
                 <ShieldAlert className="w-9 h-9 mx-auto text-brand-red" />
                 <p className="font-display uppercase text-lg mt-3">Thanks — report sent</p>
                 <p className="text-sm text-white/60 mt-1">
-                  Our team will review this post and act if it breaks the rules.
+                  Our team will review this item and act if it breaks the rules.
                 </p>
               </div>
             ) : (
               <>
                 <p className="text-sm text-white/70 mb-3">
-                  Tell us what's wrong with this post. Your report stays private.
+                  Tell us what's wrong with this item. Your report stays private.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {REASONS.map((r) => (

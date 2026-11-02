@@ -9,10 +9,11 @@ import { supabase } from "@/api/supabaseClient";
 let rows = [];
 let ownerId = null;
 let inFlight = null;
+let generation = 0;
 const listeners = new Set();
 
 function emit() {
-  const snapshot = [...rows];
+  const snapshot = { ownerId, rows: [...rows] };
   listeners.forEach((fn) => fn(snapshot));
 }
 
@@ -22,23 +23,41 @@ function subscribe(fn) {
 }
 
 export async function loadSaves(userId) {
-  if (!userId) return;
+  if (!userId) {
+    if (ownerId !== null) {
+      generation += 1;
+      ownerId = null;
+      rows = [];
+      inFlight = null;
+      emit();
+    }
+    return;
+  }
   if (ownerId !== userId) {
+    generation += 1;
     ownerId = userId;
     rows = [];
     inFlight = null;
     emit();
   }
   if (inFlight) return inFlight;
-  inFlight = supabase.from('saved').select('*').eq('user_id', userId)
+  const requestGeneration = generation;
+  const request = supabase.from('saved').select('*').eq('user_id', userId)
     .order('created_at', { ascending: false }).limit(300)
-    .then(({ data, error }) => { if (error) throw error; rows = data || []; emit(); })
+    .then(({ data, error }) => {
+      if (requestGeneration !== generation || ownerId !== userId) return;
+      if (error) throw error;
+      rows = data || [];
+      emit();
+    })
     .catch((e) => console.error(e))
-    .finally(() => { inFlight = null; });
-  return inFlight;
+    .finally(() => { if (inFlight === request) inFlight = null; });
+  inFlight = request;
+  return request;
 }
 
 async function reload(userId) {
+  generation += 1;
   inFlight = null;
   ownerId = null;
   await loadSaves(userId);
@@ -47,6 +66,9 @@ async function reload(userId) {
 /** Bookmark or un-bookmark something. Returns the new state. */
 export async function toggleSave(userId, kind, targetId) {
   if (!userId) return false;
+  if (ownerId !== userId || inFlight) await loadSaves(userId);
+  if (ownerId !== userId) return false;
+  const actionGeneration = generation;
 
   const existing = rows.find((r) => r.kind === kind && r.target_id === targetId);
   if (existing) {
@@ -56,7 +78,7 @@ export async function toggleSave(userId, kind, targetId) {
       const { error } = await supabase.from('saved').delete().eq('id', existing.id);
       if (error) throw error;
     } catch (e) {
-      await reload(userId);
+      if (ownerId === userId && generation === actionGeneration) await reload(userId);
       throw e;
     }
     return false;
@@ -69,27 +91,32 @@ export async function toggleSave(userId, kind, targetId) {
     const { data: created, error } = await supabase.from('saved')
       .insert({ user_id: userId, kind, target_id: targetId }).select().single();
     if (error) throw error;
+    if (ownerId !== userId || generation !== actionGeneration) return true;
     rows = rows.map((r) => (r.id === tempId ? created : r));
     emit();
   } catch (e) {
-    await reload(userId);
+    if (ownerId === userId && generation === actionGeneration) await reload(userId);
     throw e;
   }
   return true;
 }
 
 export function useSaved(userId) {
-  const [snapshot, setSnapshot] = useState(rows);
+  const [snapshot, setSnapshot] = useState(() => ({ ownerId, rows: [...rows] }));
 
   useEffect(() => {
-    if (!userId) return undefined;
+    const unsubscribe = subscribe(setSnapshot);
     loadSaves(userId);
-    return subscribe(setSnapshot);
+    setSnapshot({ ownerId, rows: [...rows] });
+    return unsubscribe;
   }, [userId]);
 
+  const visibleRows = userId && snapshot.ownerId === userId
+    ? snapshot.rows.filter(row => row.user_id === userId)
+    : [];
   return {
-    saves: snapshot,
-    isSaved: (kind, targetId) => snapshot.some((r) => r.kind === kind && r.target_id === targetId),
+    saves: visibleRows,
+    isSaved: (kind, targetId) => visibleRows.some((r) => r.kind === kind && r.target_id === targetId),
     toggle: (kind, targetId) => toggleSave(userId, kind, targetId),
   };
 }

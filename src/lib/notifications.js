@@ -6,7 +6,7 @@ export function notificationRoute(n) {
       return id ? `/chat/${id}` : "/inbox";
     case "item":
       return id ? `/item/${id}` : "/inbox";
-    case "post":
+    case "post": // Legacy notifications created before item unification.
       return id ? `/haul/${id}` : "/inbox";
     case "profile":
       return id ? `/profile/${id}` : "/inbox";

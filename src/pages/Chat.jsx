@@ -606,8 +606,8 @@ export default function Chat() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirm === "unblock"
-                ? "They will be able to message you and see your posts again."
-                : "They won't be able to message you, you won't see their posts, and they won't see yours. You can unblock them any time."}
+                ? "They will be able to message you and see your items again."
+                : "They won't be able to message you, you won't see their items, and they won't see yours. You can unblock them any time."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

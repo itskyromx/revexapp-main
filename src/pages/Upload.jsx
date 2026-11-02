@@ -50,7 +50,7 @@ export default function UploadPage() {
         setProduct({
           ...blankProduct(),
           ...oldProduct,
-          title: oldProduct?.title || draft.haul_title || "",
+          title: oldProduct?.title || draft.title || "",
           brand: oldProduct?.brand || "",
           price: oldProduct?.price?.toString?.() || "",
           shipping_price: oldProduct?.shipping_price?.toString?.() || "",
@@ -77,7 +77,7 @@ export default function UploadPage() {
     if (finished.current || !user?.id) return;
     setSaveState("saving");
     const payload = {
-      haul_title: product.title.trim(), caption: product.description.trim(), tags: normalizeTags(product.styles),
+      title: product.title.trim(), caption: product.description.trim(), tags: normalizeTags(product.styles),
       category: product.category, media, items: [{ ...product, tags: normalizeTags(product.styles) }],
     };
     try {
@@ -135,28 +135,16 @@ export default function UploadPage() {
     try {
       const tags = normalizeTags(product.styles);
       const name = user.display_name || user.full_name || "Creator";
-      const { data: post, error: postError } = await supabase.from("posts").insert({
-        created_by_id: user.id, creator_name: name, creator_avatar: user.avatar || "",
-        image_urls: media.map((entry) => entry.url), haul_title: product.title.trim(),
-        caption: product.description.trim(), tags, category: product.category,
-        like_count: 0, comment_count: 0, view_count: 0, share_count: 0, item_ids: [],
-      }).select().single();
-      if (postError) throw postError;
-
       const { data: item, error: itemError } = await supabase.from("items").insert({
-        created_by_id: user.id, post_id: post.id, seller_name: name, seller_avatar: user.avatar || "",
+        created_by_id: user.id, seller_name: name, seller_avatar: user.avatar || "",
         title: product.title.trim(), description: product.description.trim(), brand: product.brand.trim(),
         size: product.size.trim(), condition: product.condition, price: Number(product.price),
+        image_urls: media.map((entry) => entry.url),
         shipping_price: Number(product.shipping_price || 0), image_url: media[0]?.url || "",
         tags, styles: tags, category: product.category, subcategory: product.subcategory,
         gender: product.gender, status: "available", accepts_offers: true,
       }).select().single();
-      if (itemError) {
-        await supabase.from("posts").delete().eq("id", post.id).eq("created_by_id", user.id);
-        throw itemError;
-      }
-      const { error: linkError } = await supabase.from("posts").update({ item_ids: [item.id] }).eq("id", post.id);
-      if (linkError) throw linkError;
+      if (itemError) throw itemError;
 
       finished.current = true;
       if (draftId) await supabase.from("drafts").delete().eq("id", draftId);
@@ -241,7 +229,7 @@ export default function UploadPage() {
         </section>
 
         <button disabled={busy || media.length === 0 || !product.title.trim() || !product.description.trim() || !product.price} onClick={publish} className="acid-btn bg-brand-red text-white w-full disabled:opacity-50">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{busy ? "Publishing…" : "Publish article and post"}
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{busy ? "Publishing…" : "Publish article and item"}
         </button>
       </main>
       <BottomNav />

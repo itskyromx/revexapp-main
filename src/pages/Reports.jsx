@@ -79,35 +79,32 @@ export default function Reports() {
     setPending(report);
   };
 
-  const removeHaul = async () => {
+  const removeItem = async () => {
     if (!pending || !rule) return;
     const report = pending;
     setBusy(true);
     try {
-      const { data: items } = await supabase.from('items').select('*').eq('post_id', report.post_id);
-      for (const it of (items || [])) {
-        await supabase.from('items').delete().eq('id', it.id).then(() => {});
-      }
-      await supabase.from('posts').delete().eq('id', report.post_id).then(() => {});
+      const { error: deleteError } = await supabase.rpc("delete_item", { p_item_id: report.item_id });
+      if (deleteError) throw deleteError;
       await supabase.from('reports').update({ status: "actioned", removal_rule: rule }).eq('id', report.id);
 
       if (report.creator_id) {
         // In-app notice on the creator's profile
         await supabase.from('warnings').insert({
           user_id: report.creator_id,
-          post_id: report.post_id,
-          haul_title: report.haul_title || "",
+          item_id: null,
+          item_title: report.item_title || "",
           rule,
           dismissed: false,
         }).then(() => {});
 
-        // Email + push, naming the haul and the rule
+        // Email + push, naming the item and the rule
         await supabase.functions.invoke("sendNotification", { body: {
           recipientId: report.creator_id,
-          title: "Your haul was removed",
+          title: "Your item was removed",
           content:
             `Hi ${report.creator_name || "there"},\n\n` +
-            `Your haul "${report.haul_title || "Untitled haul"}" has been removed from Revex after a review by our team. ` +
+            `Your item "${report.item_title || "Untitled item"}" has been removed from Revex after a review by our team. ` +
             `It was found to break our rules — ${rule}.\n\n` +
             `Repeated violations can lead to your account being restricted, so please review our community guidelines before posting again.\n\n` +
             `— The Revex team`,
@@ -178,7 +175,7 @@ export default function Reports() {
             <ShieldAlert className="w-7 h-7 mx-auto text-muted-foreground" />
             <p className="font-heading font-bold uppercase text-sm mt-2">Nothing flagged</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Reported posts and users will show up here for review.
+              Reported items and users will show up here for review.
             </p>
           </div>
         ) : (
@@ -192,14 +189,14 @@ export default function Reports() {
                     </div>
                   ) : (
                     <div className="w-16 h-20 shrink-0 border-2 border-border overflow-hidden bg-muted">
-                      <Image src={r.haul_thumbnail} alt="" className="w-full h-full object-cover" />
+                      <Image src={r.item_thumbnail} alt="" className="w-full h-full object-cover" />
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="font-display uppercase text-sm truncate">
                       {r.target_type === "user"
                         ? r.reported_user_name || "Unknown user"
-                        : r.haul_title || "Untitled haul"}
+                        : r.item_title || "Untitled item"}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {r.target_type === "user" ? "Reported user" : `by ${r.creator_name || "Unknown"}`}
@@ -244,9 +241,9 @@ export default function Reports() {
       <AlertDialog open={!!pending} onOpenChange={(open) => { if (!open) setPending(null); }}>
         <AlertDialogContent className="border-[3px] border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display uppercase">Remove this haul?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display uppercase">Remove this item?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{pending?.haul_title || "This haul"}" and its items will be deleted, and{" "}
+              "{pending?.item_title || "This item"}" will be deleted, and{" "}
               {pending?.creator_name || "the creator"} will be warned by email, push and an in-app
               notice explaining the rule they broke. This can't be undone.
             </AlertDialogDescription>
@@ -266,7 +263,7 @@ export default function Reports() {
 
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={removeHaul} disabled={busy || !rule}
+            <AlertDialogAction onClick={removeItem} disabled={busy || !rule}
               className="bg-brand-red text-white border-[3px] border-border font-display uppercase">
               {busy ? "Removing…" : "Remove item"}
             </AlertDialogAction>

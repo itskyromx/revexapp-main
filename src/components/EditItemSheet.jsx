@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import TagChips from "@/components/TagChips";
 import { CONDITION_LABELS, PRODUCT_BRANDS, PRODUCT_CATEGORIES, PRODUCT_GENDERS, PRODUCT_GENDER_LABELS, normalizeTags } from "@/lib/revex";
 
-export default function EditItemSheet({ item, post, userId, onClose, onSaved }) {
+export default function EditItemSheet({ item, userId, onClose, onSaved }) {
   const [draft, setDraft] = useState(() => ({
     title: item.title || "", description: item.description || "", brand: item.brand || "",
     size: item.size || "", condition: item.condition || "good", price: String(item.price ?? ""),
@@ -13,7 +13,7 @@ export default function EditItemSheet({ item, post, userId, onClose, onSaved }) 
     subcategory: item.subcategory || "", gender: item.gender || "unisex",
     tags: item.tags || [], styles: item.styles || [], accepts_offers: Boolean(item.accepts_offers),
   }));
-  const [photos, setPhotos] = useState(() => post?.image_urls?.length ? [...post.image_urls] : item.image_url ? [item.image_url] : []);
+  const [photos, setPhotos] = useState(() => item.image_urls?.length ? [...item.image_urls] : item.image_url ? [item.image_url] : []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const locked = useRef(false);
@@ -56,32 +56,19 @@ export default function EditItemSheet({ item, post, userId, onClose, onSaved }) 
     locked.current = true;
     setBusy(true);
     setError("");
-    let itemSaved = false;
     try {
       const payload = {
         ...draft, title: draft.title.trim(), description: draft.description.trim(),
         brand: draft.brand.trim(), size: draft.size.trim(), price: Number(draft.price),
         shipping_price: Number(draft.shipping_price), tags: normalizeTags(draft.tags),
-        styles: normalizeTags(draft.styles), image_url: photos[0],
+        styles: normalizeTags(draft.styles), image_url: photos[0], image_urls: photos,
       };
       const { data: updated, error: itemError } = await supabase.from("items").update(payload)
         .eq("id", item.id).eq("created_by_id", userId).select().single();
       if (itemError) throw itemError;
-      itemSaved = true;
-      let updatedPost = post;
-      if (item.post_id) {
-        const { data, error: postError } = await supabase.from("posts").update({
-          image_urls: photos, haul_title: payload.title, caption: payload.description,
-          tags: payload.tags, category: payload.category,
-        }).eq("id", item.post_id).eq("created_by_id", userId).select().single();
-        if (postError) throw postError;
-        updatedPost = data;
-      }
-      onSaved(updated, updatedPost);
+      onSaved(updated);
     } catch (err) {
-      setError(itemSaved
-        ? "Item details were saved, but the linked post could not be updated. Please save again to finish syncing your photos and post."
-        : err.message || "Could not save changes. Please try again.");
+      setError(err.message || "Could not save changes. Please try again.");
     } finally {
       locked.current = false;
       setBusy(false);
@@ -124,7 +111,6 @@ export default function EditItemSheet({ item, post, userId, onClose, onSaved }) 
             <label className="block space-y-1"><span className="acid-label">Brand</span><input list="edit-brands" className="acid-input" value={draft.brand} onChange={(e) => update("brand", e.target.value)} /><datalist id="edit-brands">{PRODUCT_BRANDS.map((brand) => <option key={brand} value={brand} />)}</datalist></label>
             <div className="grid grid-cols-2 gap-3">
               <label className="space-y-1"><span className="acid-label">Price (€)</span><input required type="number" min="0.01" step="0.01" className="acid-input" value={draft.price} onChange={(e) => update("price", e.target.value)} /></label>
-              <label className="space-y-1"><span className="acid-label">Shipping (€)</span><input required type="number" min="0" step="0.01" className="acid-input" value={draft.shipping_price} onChange={(e) => update("shipping_price", e.target.value)} /></label>
               <label className="space-y-1"><span className="acid-label">Size</span><input maxLength={24} className="acid-input" value={draft.size} onChange={(e) => update("size", e.target.value)} /></label>
               <label className="space-y-1"><span className="acid-label">Condition</span><select className="acid-input" value={draft.condition} onChange={(e) => update("condition", e.target.value)}>{Object.entries(CONDITION_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
             </div>

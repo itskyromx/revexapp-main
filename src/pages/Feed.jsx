@@ -2,45 +2,36 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import BottomNav from "@/components/BottomNav";
-import HaulCard from "@/components/HaulCard";
+import ItemFeedCard from "@/components/ItemFeedCard";
 import { Loader2 } from "lucide-react";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
-import { enrichPostCreators } from "@/lib/profileData";
-import { refreshPostCounters } from "@/lib/postStats";
+import { enrichItemCreators } from "@/lib/profileData";
+import { refreshItemCounters } from "@/lib/itemStats";
 import { hasCookieConsent } from "@/lib/cookieConsent";
 import { useI18n } from "@/lib/i18n";
 
-// Kept for the life of the app session: coming back to the feed reuses the posts
+// Kept for the life of the app session: coming back to the feed reuses the items
 // already loaded instead of refetching and reordering them.
 let feedCache = null;
 const INDEX_KEY = "revex_feed_index";
 
-async function attachPostProducts(posts) {
-  const itemIds = [...new Set(posts.flatMap((post) => post.item_ids || []))];
-  if (!itemIds.length) return posts;
-  const { data, error } = await supabase.from("items").select("*").in("id", itemIds);
-  if (error) throw error;
-  const products = Object.fromEntries((data || []).map((item) => [item.id, item]));
-  return posts.map((post) => ({ ...post, product: products[post.item_ids?.[0]] || null }));
-}
-
-async function personalizePosts(posts) {
-  if (!hasCookieConsent("personalization")) return posts;
+async function personalizeItems(items) {
+  if (!hasCookieConsent("personalization")) return items;
   try {
     const { data, error } = await supabase.functions.invoke("productSemantics", { body: { mode: "recommend" } });
-    if (error || !data?.itemIds?.length) return posts;
+    if (error || !data?.itemIds?.length) return items;
     const rank = new Map(data.itemIds.map((id, index) => [id, index]));
-    return posts.map((post, index) => ({ post, index, rank: rank.get(post.product?.id) ?? Number.MAX_SAFE_INTEGER }))
-      .sort((a, b) => a.rank - b.rank || a.index - b.index).map(({ post }) => post);
+    return items.map((item, index) => ({ item, index, rank: rank.get(item.id) ?? Number.MAX_SAFE_INTEGER }))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index).map(({ item }) => item);
   } catch {
-    return posts;
+    return items;
   }
 }
 
 export default function Feed() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [posts, setPosts] = useState(feedCache?.posts || []);
+  const [items, setItems] = useState(feedCache?.items || []);
   const [loading, setLoading] = useState(!feedCache);
   const [feedError, setFeedError] = useState("");
   const [cursor, setCursor] = useState(feedCache?.cursor || null);
@@ -67,9 +58,9 @@ export default function Feed() {
         getBlockedIds(),
       ]);
       if (res.error) throw res.error;
-      const next = await personalizePosts(await attachPostProducts(await enrichPostCreators(hideBlocked(res.data?.posts || [], blockedIds))));
-      feedCache = { posts: next, cursor: res.data.nextCursor };
-      setPosts(next);
+      const next = await personalizeItems(await enrichItemCreators(hideBlocked(res.data?.items || [], blockedIds)));
+      feedCache = { items: next, cursor: res.data.nextCursor };
+      setItems(next);
       setCursor(res.data.nextCursor);
     } catch (e) {
       console.error(e);
@@ -83,16 +74,16 @@ export default function Feed() {
     if (!isDesktop && !feedCache) fetchFeed();
   }, [fetchFeed, isDesktop]);
 
-  // Reconcile cached cards with the database after returning from a haul detail.
+  // Reconcile cached cards with the database after returning from a item detail.
   useEffect(() => {
-    if (!feedCache?.posts?.length) return undefined;
+    if (!feedCache?.items?.length) return undefined;
     let active = true;
-    refreshPostCounters(feedCache.posts.map((post) => post.id))
+    refreshItemCounters(feedCache.items.map((item) => item.id))
       .then((counters) => {
         if (!active) return;
-        setPosts((current) => {
-          const refreshed = current.map((post) => ({ ...post, ...(counters[post.id] || {}) }));
-          feedCache = { ...feedCache, posts: refreshed };
+        setItems((current) => {
+          const refreshed = current.map((item) => ({ ...item, ...(counters[item.id] || {}) }));
+          feedCache = { ...feedCache, items: refreshed };
           return refreshed;
         });
       })
@@ -109,7 +100,7 @@ export default function Feed() {
     return () => window.removeEventListener('revex:block-changed', refresh);
   }, [fetchFeed]);
 
-  // Land back on the post the viewer was watching — before first paint.
+  // Land back on the item the viewer was watching — before first paint.
   useLayoutEffect(() => {
     if (loading || restoredRef.current) return;
     const el = scrollRef.current;
@@ -117,7 +108,7 @@ export default function Feed() {
     const idx = hasCookieConsent("preferences") ? Number(sessionStorage.getItem(INDEX_KEY) || 0) : 0;
     if (idx > 0) el.scrollTop = idx * el.clientHeight;
     restoredRef.current = true;
-  }, [loading, posts]);
+  }, [loading, items]);
 
   const rememberIndex = () => {
     const el = scrollRef.current;
@@ -137,10 +128,10 @@ export default function Feed() {
         supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } }),
         getBlockedIds(),
       ]);
-      const more = await personalizePosts(await attachPostProducts(await enrichPostCreators(hideBlocked(res.data?.posts || [], blockedIds))));
-      setPosts((p) => {
+      const more = await personalizeItems(await enrichItemCreators(hideBlocked(res.data?.items || [], blockedIds)));
+      setItems((p) => {
         const merged = [...p, ...more];
-        feedCache = { posts: merged, cursor: res.data.nextCursor };
+        feedCache = { items: merged, cursor: res.data.nextCursor };
         return merged;
       });
       setCursor(res.data.nextCursor);
@@ -163,9 +154,9 @@ export default function Feed() {
             Try again
           </button>
         </div>
-      ) : posts.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center px-8 text-center">
-          <p className="font-display text-2xl uppercase text-white mb-1">{t("No posts yet")}</p>
+          <p className="font-display text-2xl uppercase text-white mb-1">{t("No items yet")}</p>
           <p className="text-sm text-white/70">{t("Be the first to upload!")}</p>
         </div>
       ) : (
@@ -174,14 +165,21 @@ export default function Feed() {
           onScroll={rememberIndex}
           className="h-[100dvh] overflow-y-scroll snap-y snap-mandatory no-scrollbar"
         >
-          {posts.map((p) => (
+          {items.map((p) => (
             <div key={p.id} className="h-[100dvh] w-full snap-start">
-              <HaulCard
-                post={p}
+              <ItemFeedCard
+                item={p}
+                onDeleted={() => {
+                  setItems(current => {
+                    const next = current.filter(item => item.id !== p.id);
+                    feedCache = { ...(feedCache || {}), items: next };
+                    return next;
+                  });
+                }}
                 onChanged={(updated) => {
-                  setPosts((current) => {
+                  setItems((current) => {
                     const next = current.map((item) => item.id === updated.id ? { ...item, ...updated } : item);
-                    feedCache = { ...(feedCache || {}), posts: next };
+                    feedCache = { ...(feedCache || {}), items: next };
                     return next;
                   });
                 }}

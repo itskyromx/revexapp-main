@@ -115,7 +115,6 @@ export default function CheckoutSheet({ item, offer, onClose }) {
         item_id: item.id,
         item_title: item.title,
         item_image: item.image_url || "",
-        post_id: item.post_id || "",
         buyer_id: user.id,
         buyer_name: user.display_name || user.full_name || user.email,
         seller_id: item.created_by_id,

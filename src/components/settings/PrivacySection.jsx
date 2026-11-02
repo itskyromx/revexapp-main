@@ -36,14 +36,14 @@ export default function PrivacySection({ user, setUser }) {
     <div className="space-y-3">
       <ToggleRow
         label="Private account"
-        description="Only people you follow back can see your posts and shop."
+        description="Only people you follow back can see your items and shop."
         checked={Boolean(user?.private_account)}
         onChange={(v) => update({ private_account: v })}
         disabled={busy}
       />
       <ToggleRow
         label="Hide from search"
-        description="Keep your profile, shop and posts out of search results and the For You feed."
+        description="Keep your profile, shop and items out of search results and the For You feed."
         checked={Boolean(user?.hide_from_search)}
         onChange={(v) => update({ hide_from_search: v })}
         disabled={busy}

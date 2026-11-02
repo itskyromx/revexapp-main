@@ -2,17 +2,18 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import OfferSheet from "@/components/OfferSheet";
 import CheckoutSheet from "@/components/CheckoutSheet";
 import EditItemSheet from "@/components/EditItemSheet";
 import { formatPrice, CONDITION_LABELS } from "@/lib/revex";
 import { useSaved } from "@/hooks/useSaved";
-import { toggleBookmark } from "@/lib/bookmarks";
 import BottomNav from "@/components/BottomNav";
 import { getBlockRelationship } from "@/lib/blocks";
 import { hasCookieConsent } from "@/lib/cookieConsent";
+import { recordItemView } from "@/lib/itemStats";
+import { toast } from "@/components/ui/use-toast";
 
 export default function ItemDetail() {
   const { itemId } = useParams();
@@ -20,7 +21,6 @@ export default function ItemDetail() {
   const { user } = useCurrentUser();
   const { isSaved } = useSaved(user?.id);
   const [item, setItem] = useState(null);
-  const [post, setPost] = useState(null);
   const [offers, setOffers] = useState([]);
   const [showOffer, setShowOffer] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -36,11 +36,9 @@ export default function ItemDetail() {
     (async () => {
       try {
         const { data: it } = await supabase.from('items').select('*').eq('id', itemId).single();
+        if (!it) return;
         setItem(it);
-        if (it.post_id) {
-          const { data: p } = await supabase.from('posts').select('*').eq('id', it.post_id).single();
-          setPost(p);
-        }
+        void recordItemView(it.id).catch(error => console.error(error));
         if (it.created_by_id) {
           const { data: of } = await supabase.from('offers').select('*').eq('item_id', itemId);
           setOffers(of);
@@ -51,6 +49,24 @@ export default function ItemDetail() {
       } catch (e) { console.error(e); } finally { setLoading(false); }
     })();
   }, [itemId, user?.id]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("boost") !== "success" || !params.get("session_id")) return;
+    let active = true;
+    supabase.functions.invoke("boostItem", { body: { action: "confirm", itemId, sessionId: params.get("session_id") } })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error || data?.error) { toast({ title: "Boost not confirmed", description: data?.error || error.message }); return; }
+        if (data?.boost_expires_at) {
+          setItem(current => current ? { ...current, boost_expires_at: data.boost_expires_at } : current);
+          toast({ title: "Boost is live" });
+          params.delete("boost"); params.delete("session_id");
+          window.history.replaceState({}, "", window.location.pathname + (params.size ? `?${params}` : ""));
+        }
+      });
+    return () => { active = false; };
+  }, [itemId]);
 
   useEffect(() => {
     if (!item?.id || !hasCookieConsent("personalization")) return;
@@ -157,7 +173,7 @@ export default function ItemDetail() {
   };
 
   const canBuy = item?.status === "available" && !isOwner && !blockedRelationship && user;
-  const productImages = post?.image_urls?.length ? post.image_urls : item?.image_url ? [item.image_url] : [];
+  const productImages = item?.image_urls?.length ? item.image_urls : item?.image_url ? [item.image_url] : [];
   const currentImage = productImages[imageIndex] || productImages[0];
 
   if (loading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
@@ -177,7 +193,7 @@ export default function ItemDetail() {
         <div className="acid-card overflow-hidden">
           <div className="aspect-[4/5] bg-muted border-b-[3px] border-border relative">
             {currentImage ?
-              <img key={`${imageIndex}:${currentImage}`} src={currentImage} className="w-full h-full object-cover animate-post-slide" alt={item.title} /> :
+              <img key={`${imageIndex}:${currentImage}`} src={currentImage} className="w-full h-full object-cover animate-item-slide" alt={item.title} /> :
               <div className="w-full h-full grid-bg" />}
             {productImages.length > 1 && <>
               <button aria-label="Previous photo" onClick={() => setImageIndex((index) => (index - 1 + productImages.length) % productImages.length)} className="absolute left-2 top-1/2 -translate-y-1/2 sticker bg-black/60 text-white w-9 h-9 rounded-full"><ChevronLeft className="w-5 h-5" /></button>
@@ -187,13 +203,6 @@ export default function ItemDetail() {
             {item.status !== "available" &&
               <span className="absolute top-3 left-3 sticker bg-black text-white px-3 py-1 uppercase">{item.status}</span>
             }
-            <button
-              onClick={() => toggleBookmark(user?.id, "item", item)}
-              aria-label={isSaved("item", item.id) ? "Remove from saved" : "Save for later"}
-              className="absolute top-3 right-3 sticker bg-black/70 border-white/30 w-10 h-10 rounded-full flex items-center justify-center"
-            >
-              <Bookmark className={`w-5 h-5 ${isSaved("item", item.id) ? "fill-brand-yellow text-brand-yellow" : "text-white"}`} />
-            </button>
           </div>
           <div className="p-4">
             <div className="flex items-start justify-between gap-2">
@@ -322,10 +331,9 @@ export default function ItemDetail() {
         </div>
       </div>
 
-      {editing && isOwner && <EditItemSheet key={item.id} item={item} post={post} userId={user.id}
-        onClose={() => setEditing(false)} onSaved={(updatedItem, updatedPost) => {
+      {editing && isOwner && <EditItemSheet key={item.id} item={item} userId={user.id}
+        onClose={() => setEditing(false)} onSaved={(updatedItem) => {
           setItem(updatedItem);
-          setPost(updatedPost);
           setImageIndex(0);
           setEditing(false);
         }} />}

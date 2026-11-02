@@ -106,7 +106,7 @@ export default function Onboarding() {
       <header className="px-5 pt-10 pb-6 border-b-[3px] border-white/10">
         <p className="acid-label text-white/50 mb-1">{t("Welcome to Revex")}</p>
         <h1 className="font-display text-4xl uppercase leading-[0.95]">{t("Tell us your vibe")}</h1>
-        <p className="text-sm text-white/60 mt-2 font-body">{t("Pick what you're into so we can fill your feed with posts you'll actually love.")}</p>
+        <p className="text-sm text-white/60 mt-2 font-body">{t("Pick what you're into so we can fill your feed with items you'll actually love.")}</p>
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-6 pb-32 no-scrollbar">
