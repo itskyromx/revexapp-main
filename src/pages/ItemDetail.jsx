@@ -19,7 +19,6 @@ export default function ItemDetail() {
   const { itemId } = useParams();
   const navigate = useNavigate();
   const { user, isLoadingAuth: loadingViewer } = useAuth();
-  const { isSaved } = useSaved(user?.id);
   const [item, setItem] = useState(null);
   const [offers, setOffers] = useState([]);
   const [showOffer, setShowOffer] = useState(false);
