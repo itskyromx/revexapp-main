@@ -8,6 +8,8 @@
 # dependencies
 node_modules/
 .tmp/
+dist/
+supabase/.temp/
 
 supabase\functions
 .agents\skills
