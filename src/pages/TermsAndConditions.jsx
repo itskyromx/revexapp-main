@@ -49,7 +49,7 @@ export default function TermsAndConditions() {
         <ul className="list-disc space-y-2 pl-6">
           <li>break the law, violate another person’s rights, or encourage others to do so;</li>
           <li>harass, threaten, stalk, exploit, defraud, or discriminate against anyone;</li>
-          <li>post content that is unlawful, deceptive, hateful, sexually exploitative, or harmful;</li>
+          <li>item content that is unlawful, deceptive, hateful, sexually exploitative, or harmful;</li>
           <li>sell counterfeit, stolen, prohibited, or misrepresented goods;</li>
           <li>spam, scrape, probe, disrupt, or attempt to gain unauthorized access to the Service;</li>
           <li>upload malware or use automated tools to access or manipulate the Service; or</li>
@@ -63,14 +63,14 @@ export default function TermsAndConditions() {
       <LegalSection title="4. Your content">
         <p>
           You keep ownership of content you create and submit, such as profile information, photos,
-          videos, posts, listings, and messages (“Your Content”). You are responsible for Your Content
+          videos, items, listings, and messages (“Your Content”). You are responsible for Your Content
           and must have the rights and permissions needed to submit it and to grant the licence below.
         </p>
         <p>
           You grant the Service operator a worldwide, non-exclusive, royalty-free licence to host,
           store, reproduce, adapt for technical display, distribute, and display Your Content as
           needed to provide, secure, maintain, and promote the Service. This licence covers showing
-          public posts and profiles to other users and making media available through the Service.
+          public items and profiles to other users and making media available through the Service.
           It ends for content when it is removed from the Service, except for copies retained in
           backups, records needed for legal or safety purposes, or content that other users have
           lawfully shared and cannot reasonably retrieve.
@@ -81,9 +81,9 @@ export default function TermsAndConditions() {
           Service’s reporting controls or the official support channel.
         </p>
       </LegalSection>
-      <LegalSection title="5. Profiles, posts, and messages">
+      <LegalSection title="5. Profiles, items, and messages">
         <p>
-          Public profiles, posts, listings, and other public activity may be visible to other users
+          Public profiles, items, listings, and other public activity may be visible to other users
         and may be copied or shared by them. Account privacy settings can limit some visibility, but
         cannot guarantee that information will remain private once shared. Messages are intended for
         the conversation participants, but you should not send information that you would not want

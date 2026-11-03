@@ -1,58 +1,81 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
+import { useAuth } from "@/lib/useAuth";
+import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import OfferSheet from "@/components/OfferSheet";
 import CheckoutSheet from "@/components/CheckoutSheet";
-import TagChips from "@/components/TagChips";
-import { formatPrice, CONDITION_LABELS, normalizeTags } from "@/lib/revex";
+import EditItemSheet from "@/components/EditItemSheet";
+import { formatPrice, CONDITION_LABELS } from "@/lib/revex";
 import { useSaved } from "@/hooks/useSaved";
-import { toggleBookmark } from "@/lib/bookmarks";
 import BottomNav from "@/components/BottomNav";
 import { getBlockRelationship } from "@/lib/blocks";
 import { hasCookieConsent } from "@/lib/cookieConsent";
+import { useItemView } from "@/hooks/useItemView";
+import { toast } from "@/components/ui/use-toast";
 
 export default function ItemDetail() {
   const { itemId } = useParams();
   const navigate = useNavigate();
-  const { user } = useCurrentUser();
+  const { user, isLoadingAuth: loadingViewer } = useAuth();
   const { isSaved } = useSaved(user?.id);
   const [item, setItem] = useState(null);
-  const [post, setPost] = useState(null);
   const [offers, setOffers] = useState([]);
   const [showOffer, setShowOffer] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [counterFor, setCounterFor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editTags, setEditTags] = useState([]);
-  const [saving, setSaving] = useState(false);
   const [cancelNotice, setCancelNotice] = useState("");
   const [blockedRelationship, setBlockedRelationship] = useState(false);
   const [recommendedItems, setRecommendedItems] = useState([]);
   const [imageIndex, setImageIndex] = useState(0);
+  const viewRef = useItemView(item?.id, !loading && !loadingViewer && item?.id === itemId
+    && user?.id !== item?.created_by_id && !blockedRelationship && !item?.is_archived);
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setOffers([]);
+    setBlockedRelationship(false);
     (async () => {
       try {
         const { data: it } = await supabase.from('items').select('*').eq('id', itemId).single();
-        setItem(it);
-        if (it.post_id) {
-          const { data: p } = await supabase.from('posts').select('*').eq('id', it.post_id).single();
-          setPost(p);
-        }
+        if (!active) return;
+        setItem(it || null);
+        if (!it) return;
         if (it.created_by_id) {
           const { data: of } = await supabase.from('offers').select('*').eq('item_id', itemId);
-          setOffers(of);
+          if (!active) return;
+          setOffers(of || []);
           if (user?.id) {
-            setBlockedRelationship(await getBlockRelationship(user.id, it.created_by_id));
+            const blocked = await getBlockRelationship(user.id, it.created_by_id);
+            if (active) setBlockedRelationship(blocked);
           }
         }
-      } catch (e) { console.error(e); } finally { setLoading(false); }
+      } catch (e) { console.error(e); } finally { if (active) setLoading(false); }
     })();
+    return () => { active = false; };
   }, [itemId, user?.id]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("boost") !== "success" || !params.get("session_id")) return;
+    let active = true;
+    supabase.functions.invoke("boostItem", { body: { action: "confirm", itemId, sessionId: params.get("session_id") } })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error || data?.error) { toast({ title: "Boost not confirmed", description: data?.error || error.message }); return; }
+        if (data?.boost_expires_at) {
+          setItem(current => current ? { ...current, boost_expires_at: data.boost_expires_at } : current);
+          toast({ title: "Boost is live" });
+          params.delete("boost"); params.delete("session_id");
+          window.history.replaceState({}, "", window.location.pathname + (params.size ? `?${params}` : ""));
+        }
+      });
+    return () => { active = false; };
+  }, [itemId]);
 
   useEffect(() => {
     if (!item?.id || !hasCookieConsent("personalization")) return;
@@ -62,13 +85,13 @@ export default function ItemDetail() {
       try {
         const { data: semantic, error } = await supabase.functions.invoke("productSemantics", { body: { mode: "similar", itemId: item.id } });
         if (!error && semantic?.itemIds?.length) {
-          const { data } = await supabase.from("items").select("*").in("id", semantic.itemIds).eq("status", "available");
+          const { data } = await supabase.from("items").select("*").in("id", semantic.itemIds).eq("status", "available").eq("is_archived", false);
           const rank = new Map(semantic.itemIds.map((id, index) => [id, index]));
           recommendations = (data || []).sort((a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999));
         }
       } catch {}
       if (!recommendations.length) {
-        let fallback = supabase.from("items").select("*").eq("status", "available").neq("id", item.id);
+        let fallback = supabase.from("items").select("*").eq("status", "available").eq("is_archived", false).neq("id", item.id);
         if (item.category) fallback = fallback.eq("category", item.category);
         const { data } = await fallback.order("created_at", { ascending: false }).limit(8);
         recommendations = data || [];
@@ -78,35 +101,18 @@ export default function ItemDetail() {
     return () => { active = false; };
   }, [item?.id, item?.category]);
 
-  useEffect(() => {
-    if (item) {
-      setEditTags(item.tags || []);
-    }
-  }, [item]);
-
   // They came back from Stripe without paying: close the unpaid order, free the
   // item, and clear the marker so nothing can bounce them back to Stripe.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get("order");
     if (params.get("checkout") !== "cancel" || !orderId) return;
-    setCancelNotice("Checkout cancelled â€” nothing was charged and the item is available again.");
+    setCancelNotice("Checkout cancelled — nothing was charged and the item is available again.");
     supabase.functions.invoke("cancelOrder", { body: { orderId } }).catch(() => {});
     window.history.replaceState({}, "", `/item/${itemId}`);
   }, [itemId]);
 
   const isOwner = user && item && user.id === item.created_by_id;
-
-  const saveEdit = async () => {
-    setSaving(true);
-    try {
-      const tags = normalizeTags(editTags);
-      await supabase.from('items').update({ tags }).eq('id', item.id);
-      setItem((it) => ({ ...it, tags }));
-      setEditing(false);
-    } catch (e) { console.error(e); }
-    setSaving(false);
-  };
 
   const submitOffer = async ({ amount, message }) => {
     const { data: o, error } = await supabase.from('offers').insert({
@@ -175,12 +181,12 @@ export default function ItemDetail() {
     }}).catch(() => {});
   };
 
-  const canBuy = item?.status === "available" && !isOwner && !blockedRelationship && user;
-  const productImages = post?.image_urls?.length ? post.image_urls : item?.image_url ? [item.image_url] : [];
+  const canBuy = item?.status === "available" && !item.is_archived && !isOwner && !blockedRelationship && user;
+  const productImages = item?.image_urls?.length ? item.image_urls : item?.image_url ? [item.image_url] : [];
   const currentImage = productImages[imageIndex] || productImages[0];
 
   if (loading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
-  if (!item) return <div className="min-h-screen bg-background grid place-items-center p-6"><div className="acid-card p-6">Item not found.</div></div>;
+  if (!item || (item.is_archived && !isOwner)) return <div className="min-h-screen bg-background grid place-items-center p-6"><div className="acid-card p-6">Item not found.</div></div>;
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -194,9 +200,9 @@ export default function ItemDetail() {
       <div className="max-w-md mx-auto p-4">
         {cancelNotice && <div className="acid-card-sm bg-muted p-3 mb-3 text-xs">{cancelNotice}</div>}
         <div className="acid-card overflow-hidden">
-          <div className="aspect-[4/5] bg-muted border-b-[3px] border-border relative">
+          <div ref={viewRef} className="aspect-[4/5] bg-muted border-b-[3px] border-border relative">
             {currentImage ?
-              <img key={`${imageIndex}:${currentImage}`} src={currentImage} className="w-full h-full object-cover animate-post-slide" alt={item.title} /> :
+              <img key={`${imageIndex}:${currentImage}`} src={currentImage} className="w-full h-full object-cover animate-item-slide" alt={item.title} /> :
               <div className="w-full h-full grid-bg" />}
             {productImages.length > 1 && <>
               <button aria-label="Previous photo" onClick={() => setImageIndex((index) => (index - 1 + productImages.length) % productImages.length)} className="absolute left-2 top-1/2 -translate-y-1/2 sticker bg-black/60 text-white w-9 h-9 rounded-full"><ChevronLeft className="w-5 h-5" /></button>
@@ -206,13 +212,6 @@ export default function ItemDetail() {
             {item.status !== "available" &&
               <span className="absolute top-3 left-3 sticker bg-black text-white px-3 py-1 uppercase">{item.status}</span>
             }
-            <button
-              onClick={() => toggleBookmark(user?.id, "item", item)}
-              aria-label={isSaved("item", item.id) ? "Remove from saved" : "Save for later"}
-              className="absolute top-3 right-3 sticker bg-black/70 border-white/30 w-10 h-10 rounded-full flex items-center justify-center"
-            >
-              <Bookmark className={`w-5 h-5 ${isSaved("item", item.id) ? "fill-brand-yellow text-brand-yellow" : "text-white"}`} />
-            </button>
           </div>
           <div className="p-4">
             <div className="flex items-start justify-between gap-2">
@@ -222,13 +221,11 @@ export default function ItemDetail() {
               </div>
               <div className="text-right shrink-0">
                 <p className="font-display text-3xl">{formatPrice(item.price)}</p>
-                <p className="text-xs text-muted-foreground">+ {formatPrice(item.shipping_price)} ship</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5 mt-3">
-              <span className="acid-chip bg-muted">Size {item.size || "â€”"}</span>
+              <span className="acid-chip bg-muted">Size {item.size || "—"}</span>
               <span className="acid-chip bg-card">{CONDITION_LABELS[item.condition]}</span>
-              {item.accepts_offers && <span className="acid-chip bg-brand-red text-white">Takes offers</span>}
             </div>
             {item.tags && item.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -236,11 +233,6 @@ export default function ItemDetail() {
               </div>
             )}
             {item.description && <p className="text-sm mt-4 whitespace-pre-wrap">{item.description}</p>}
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {item.gender && <span className="acid-chip bg-card capitalize">{item.gender === "men" ? "Men" : item.gender === "women" ? "Women" : "Unisex"}</span>}
-              {item.subcategory && <span className="acid-chip bg-card">{item.subcategory}</span>}
-              {item.styles?.map((style) => <span key={style} className="acid-chip bg-muted">{style}</span>)}
-            </div>
             {item.created_by_id && (
               <button onClick={() => navigate(`/profile/${item.created_by_id}`)} className="flex items-center gap-2 mt-4 w-full acid-card-sm bg-muted p-2">
                 <Avatar name={item.seller_name} src={item.seller_avatar} size={36} />
@@ -257,28 +249,17 @@ export default function ItemDetail() {
           <div className="mt-4 acid-card p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-display uppercase text-lg">Edit Item</h3>
-              <button onClick={() => setEditing((v) => !v)} className="acid-btn bg-muted text-foreground px-3 py-1 text-xs">
-                {editing ? "Close" : <><Pencil className="w-3.5 h-3.5" /> Edit</>}
+              <button onClick={() => setEditing(true)} className="acid-btn bg-muted text-foreground px-3 py-1 text-xs">
+                <Pencil className="w-3.5 h-3.5" /> Edit
               </button>
             </div>
-            {editing && (
-              <>
-                <div>
-                  <span className="acid-label">Tags</span>
-                  <div className="mt-1"><TagChips value={editTags} onChange={setEditTags} /></div>
-                </div>
-                <button disabled={saving} onClick={saveEdit} className="acid-btn bg-brand-red text-white w-full">
-                  {saving ? "Saving..." : "Save Changes"}
-                </button>
-              </>
-            )}
           </div>
         )}
 
         {/* Owner actions */}
         {blockedRelationship && !isOwner && (
           <div className="mt-4 acid-card p-4 text-sm text-muted-foreground">
-            You canâ€™t view or message this seller because youâ€™ve blocked them or theyâ€™ve blocked you.
+            You can’t view or message this seller because you’ve blocked them or they’ve blocked you.
           </div>
         )}
 
@@ -286,7 +267,7 @@ export default function ItemDetail() {
           <div className="mt-4 acid-card p-4">
             <h3 className="font-display uppercase text-lg mb-2">Offers ({offers.length})</h3>
             {offers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No offers yet â€” sit tight.</p>
+              <p className="text-sm text-muted-foreground">No offers yet — sit tight.</p>
             ) : (
               <div className="space-y-2">
                 {offers.map((o) => (
@@ -355,10 +336,16 @@ export default function ItemDetail() {
 
         <div className="mt-4 acid-card-sm bg-card p-3 flex items-start gap-2">
           <ShieldCheck className="w-5 h-5 shrink-0" />
-          <p className="text-xs text-muted-foreground">Buyer Protection: your money is held until you confirm the item arrived as described. A 4% + â‚¬0.60 fee applies at checkout.</p>
+          <p className="text-xs text-muted-foreground">Buyer Protection: your money is held until you confirm the item arrived as described. A 4% + €0.60 fee applies at checkout.</p>
         </div>
       </div>
 
+      {editing && isOwner && <EditItemSheet key={item.id} item={item} userId={user.id}
+        onClose={() => setEditing(false)} onSaved={(updatedItem) => {
+          setItem(updatedItem);
+          setImageIndex(0);
+          setEditing(false);
+        }} />}
       {showOffer && <OfferSheet item={item} onClose={() => setShowOffer(false)} onSubmitted={submitOffer} />}
       {counterFor && (
         <OfferSheet

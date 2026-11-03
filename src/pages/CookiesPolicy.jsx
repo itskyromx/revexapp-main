@@ -25,7 +25,7 @@ export default function CookiesPolicy() {
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li><strong>Essential:</strong> Supabase Auth stores the sign-in session in browser storage; the consent record remembers your selection. These are always on because account access and security depend on them.</li>
-          <li><strong>Preferences:</strong> if enabled, Revex can store the theme, selected language, sidebar state, feed position and small local caches for likes, bookmarks and viewed posts. Without this choice, device language and theme are followed automatically, while manual preferences are not saved.</li>
+          <li><strong>Preferences:</strong> if enabled, Revex can store the theme, selected language, sidebar state, feed position and small local caches for likes, bookmarks and viewed items. Without this choice, device language and theme are followed automatically, while manual preferences are not saved.</li>
           <li><strong>Analytics:</strong> no analytics or advertising tracker is currently configured. This category remains off unless you enable it.</li>
           <li><strong>Payment flows:</strong> when you choose to pay or manage a saved card, Stripe Checkout receives the required order, payment type and browser/device information. Card details are entered on Stripe's hosted page. Apple Pay is shown when available for your device and browser.</li>
           <li><strong>Collection point map:</strong> if you select collection-point delivery and open the map, OpenStreetMap receives your IP address and the areas of the map requested by your browser. The coordinates you select are stored with the order by Revex and shared with the seller and connected carrier to fulfil delivery.</li>
@@ -49,7 +49,9 @@ export default function CookiesPolicy() {
           You can change your choice at any time using the control below. When you turn preferences off,
           Revex removes the optional browser keys it controls. Semantic search and recommendations stay
           off unless you enable that category; when enabled, product descriptions, search terms and
-          selected style/brand preferences are sent to OpenAI for embedding generation. Your account records and actions already
+          selected style/brand preferences are sent to OpenAI for embedding generation. If you explicitly use
+          item video analysis, selected video frames and their image URLs are also sent to OpenAI to suggest
+          item details, only with personalization consent. Your account records and actions already
           stored on the platform remain governed by the Privacy Policy and the feature you used.
         </p>
         <button type="button" onClick={openCookieSettings} className="acid-btn bg-brand-red px-4 py-2 text-xs text-white">
@@ -97,7 +99,7 @@ export default function CookiesPolicy() {
       <LegalSection title="5. Analytics and advertising">
         <p>
           The current application does not load an analytics SDK, advertising pixel or behavioral ad
-          tracker. Revex does count platform actions such as post views, likes, shares and bookmarks in
+          tracker. Revex does count platform actions such as item views, likes, shares and bookmarks in
           order to provide those features; those records are described above and are not optional
           advertising cookies.
         </p>

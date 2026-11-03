@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/api/supabaseClient";
-import { Search as SearchIcon, Flame, X, TrendingUp, UserRound } from "lucide-react";
+import { Search as SearchIcon, X, TrendingUp, UserRound } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { formatPrice } from "@/lib/revex";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
@@ -11,37 +11,32 @@ import ItemCard from "@/components/ItemCard";
 import { hasCookieConsent } from "@/lib/cookieConsent";
 
 const HOT_FALLBACK = ["y2k", "vintage", "streetwear", "archive", "cottagecore", "thrifting"];
-const HAUL_FILTERS = ["All", "Jackets", "Denim", "Vintage Tees", "Streetwear", "Y2K", "Cottagecore", "Luxury"];
 
 export default function Search() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState([]);
-  const [posts, setPosts] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [semanticIds, setSemanticIds] = useState([]);
   const [semanticLoading, setSemanticLoading] = useState(false);
   const [hiddenIds, setHiddenIds] = useState([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
-  const [haulFilter, setHaulFilter] = useState("All");
-  const [catalogGender, setCatalogGender] = useState("unisex");
+  const [catalogGender, setCatalogGender] = useState("all");
   const [catalogCategory, setCatalogCategory] = useState("all");
   const [catalogBrand, setCatalogBrand] = useState("");
 
   useEffect(() => {
     (async () => {
       try {
-        const [itemsRes, postsRes, blockedIds, hiddenRes] = await Promise.all([
-          supabase.from('items').select('*').eq('status', 'available').order('created_at', { ascending: false }).limit(60),
-          supabase.from('posts').select('*').order('like_count', { ascending: false }).limit(60),
+        const [itemsRes, blockedIds, hiddenRes] = await Promise.all([
+          supabase.from('items').select('*').eq('status', 'available').eq('is_archived', false).order('created_at', { ascending: false }).limit(60),
           getBlockedIds(),
           supabase.functions.invoke("getHiddenUserIds", { body: {} }).catch(() => ({ data: { ids: [] } }))
         ]);
         const hiddenIds = [...blockedIds, ...(hiddenRes?.data?.ids || [])];
         setHiddenIds(hiddenIds);
         setItems(hideBlocked(itemsRes.data || [], hiddenIds));
-        setPosts(hideBlocked(postsRes.data || [], hiddenIds));
       } catch (e) { console.error(e); }
     })();
   }, []);
@@ -126,7 +121,7 @@ export default function Search() {
     const knownIds = new Set(items.map((item) => item.id));
     const missingIds = semanticIds.filter((id) => !knownIds.has(id));
     if (!missingIds.length) return;
-    supabase.from("items").select("*").in("id", missingIds).then(({ data, error }) => {
+    supabase.from("items").select("*").in("id", missingIds).eq("is_archived", false).then(({ data, error }) => {
       if (error || !data?.length) return;
       setItems((current) => [...current, ...data.filter((item) => !current.some((existing) => existing.id === item.id))]);
     }).catch((error) => console.error("Could not load semantic product results", error));
@@ -134,27 +129,16 @@ export default function Search() {
 
   const hotSearches = useMemo(() => {
     const counts = {};
-    posts.forEach((p) => (p.tags || []).forEach((t) => { counts[t] = (counts[t] || 0) + 1; }));
+    items.forEach((p) => (p.tags || []).forEach((t) => { counts[t] = (counts[t] || 0) + 1; }));
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([t]) => t);
     return (sorted.length ? sorted : HOT_FALLBACK).slice(0, 8);
-  }, [posts]);
-
-  const filteredPosts = useMemo(() => {
-    if (haulFilter === "All") return posts;
-    const key = haulFilter.toLowerCase();
-    return posts.filter((p) => {
-      const cat = (p.category || "").toLowerCase().includes(key);
-      const tag = (p.tags || []).some((t) => t.toLowerCase().includes(key));
-      const title = (p.haul_title || "").toLowerCase().includes(key);
-      return cat || tag || title;
-    });
-  }, [posts, haulFilter]);
+  }, [items]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
     const exact = items.filter((it) =>
-      [it.title, it.brand, it.size, it.category, ...(it.tags || [])]
+      [it.title, it.description, it.seller_name, it.brand, it.size, it.category, ...(it.tags || [])]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     ).slice(0, 30);
@@ -170,15 +154,6 @@ export default function Search() {
     return genderMatch && categoryMatch && brandMatch;
   }), [items, catalogGender, catalogCategory, catalogBrand]);
 
-  const postResults = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return posts.filter((post) =>
-      [post.haul_title, post.caption, post.category, post.creator_name, ...(post.tags || [])]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q))
-    ).slice(0, 20);
-  }, [query, posts]);
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -206,12 +181,12 @@ export default function Search() {
         {query.trim() ? (
           <div className="space-y-6">
             <p className="acid-label">{t('Results for "{query}"', { query })}</p>
-            {(profilesLoading || semanticLoading) && profiles.length === 0 && results.length === 0 && postResults.length === 0 ? (
+            {(profilesLoading || semanticLoading) && profiles.length === 0 && results.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">{t("Searching…")}</p>
-            ) : profiles.length === 0 && results.length === 0 && postResults.length === 0 ? (
+            ) : profiles.length === 0 && results.length === 0 ? (
               <div className="py-12 text-center">
                 <p className="font-display text-lg uppercase">{t("No matches")}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t("Try a name, post title, tag or brand.")}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t("Try a name, item title, tag or brand.")}</p>
               </div>
             ) : (
               <>
@@ -233,25 +208,6 @@ export default function Search() {
                         );
                       })}
                       {profilesLoading && <p className="text-xs text-muted-foreground">{t("Searching people…")}</p>}
-                    </div>
-                  </section>
-                )}
-
-                {postResults.length > 0 && (
-                  <section>
-                    <h3 className="font-display text-lg uppercase mb-3">{t("Posts")}</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {postResults.map((post) => (
-                        <button key={post.id} onClick={() => navigate(`/haul/${post.id}`)} className="border-[3px] border-border bg-card overflow-hidden text-left">
-                          <div className="aspect-square bg-muted border-b-[3px] border-border">
-                            {post.image_urls?.[0] ? <img src={post.image_urls[0]} alt={post.haul_title || "Post"} className="w-full h-full object-cover" /> : <div className="w-full h-full grid-bg" />}
-                          </div>
-                          <div className="p-2">
-                            <p className="font-heading font-bold text-[10px] uppercase truncate">{post.creator_name || "Revex user"}</p>
-                            <p className="text-xs truncate">{post.haul_title || post.caption || "Post"}</p>
-                          </div>
-                        </button>
-                      ))}
                     </div>
                   </section>
                 )}

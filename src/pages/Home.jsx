@@ -14,19 +14,19 @@ export default function Home() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
-  const [posts, setPosts] = useState([]);
+  const [trendingItems, setTrendingItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [itemsRes, postsRes, blockedIds] = await Promise.all([
-          supabase.from('items').select('*').eq('status', 'available').order('created_at', { ascending: false }).limit(12),
-          supabase.from('posts').select('*').order('like_count', { ascending: false }).limit(8),
+        const [itemsRes, trendingRes, blockedIds] = await Promise.all([
+          supabase.from('items').select('*').eq('status', 'available').eq('is_archived', false).order('created_at', { ascending: false }).limit(12),
+          supabase.from('items').select('*').eq('is_archived', false).order('like_count', { ascending: false }).limit(8),
           getBlockedIds(),
         ]);
         setItems(hideBlocked(itemsRes.data || [], blockedIds));
-        setPosts(hideBlocked(postsRes.data || [], blockedIds));
+        setTrendingItems(hideBlocked(trendingRes.data || [], blockedIds));
       } catch (e) { console.error(e); } finally { setLoading(false); }
     })();
   }, []);
@@ -80,12 +80,12 @@ export default function Home() {
               </div>
             </section>
 
-            {/* Trending hauls */}
-            {posts.length > 0 && (
+            {/* Trending items */}
+            {trendingItems.length > 0 && (
               <section>
-                <SectionTitle icon={<Flame className="w-4 h-4" />} title={t("Trending hauls")} actionLabel={t("Open Watch")} onAction={() => navigate("/watch")} />
+                <SectionTitle icon={<Flame className="w-4 h-4" />} title={t("Trending items")} actionLabel={t("Open Watch")} onAction={() => navigate("/watch")} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {posts.slice(0, 4).map((p) => (
+                  {trendingItems.slice(0, 4).map((p) => (
                     <button
                       key={p.id}
                       onClick={() => navigate("/watch")}
@@ -95,7 +95,7 @@ export default function Home() {
                       ) : <div className="w-full h-full grid-bg" />}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                       <div className="absolute bottom-2 left-2 right-2">
-                        <p className="font-display text-white text-sm uppercase line-clamp-2">{p.haul_title}</p>
+                        <p className="font-display text-white text-sm uppercase line-clamp-2">{p.title}</p>
                         <span className="inline-flex items-center gap-1 text-white/80 text-[10px] mt-1">
                           <Play className="w-3 h-3" /> {p.like_count || 0} {t("likes")}
                         </span>

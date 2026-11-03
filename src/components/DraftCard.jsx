@@ -7,7 +7,7 @@ export default function DraftCard({ draft, onOpen, onDelete }) {
   const filled = (draft.items || []).filter(
     (it) => (it.title || "").trim() || it.price || it.image_url
   );
-  const title = (draft.haul_title || "").trim();
+  const title = (draft.title || "").trim();
 
   return (
     <div className="acid-card-sm bg-card p-2 flex items-center gap-3">
@@ -28,7 +28,7 @@ export default function DraftCard({ draft, onOpen, onDelete }) {
       </button>
 
       <button onClick={() => onOpen(draft.id)} className="min-w-0 flex-1 text-left">
-        <p className="font-heading font-bold text-sm truncate">{title || "Untitled post"}</p>
+        <p className="font-heading font-bold text-sm truncate">{title || "Untitled item"}</p>
         <p className="text-[11px] text-muted-foreground mt-0.5">
           {filled.length} {filled.length === 1 ? "item" : "items"} · edited {timeAgo(draft.updated_date)} ago
         </p>

@@ -1,4 +1,4 @@
-export const COOKIE_POLICY_VERSION = "2026-10-14-2";
+export const COOKIE_POLICY_VERSION = "2026-11-03-2";
 export const COOKIE_CONSENT_STORAGE_KEY = "revex-cookie-consent";
 export const COOKIE_CONSENT_EVENT = "revex:cookie-consent-changed";
 export const OPEN_COOKIE_SETTINGS_EVENT = "revex:open-cookie-settings";
@@ -31,7 +31,7 @@ export function hasCookieConsent(category) {
 
 function clearOptionalStorage() {
   try {
-    ["theme", "revex-language", "revex_liked", "revex_saved", "revex-viewed-posts"].forEach((key) => {
+    ["theme", "revex-language", "revex_liked", "revex_saved", "revex-viewed-items", "revex-viewed-posts"].forEach((key) => {
       window.localStorage.removeItem(key);
     });
   } catch {}

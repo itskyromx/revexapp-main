@@ -51,7 +51,7 @@ export default function ActivityFeed() {
             const profile = profiles[item.actor_id];
             const fallbackName = item.actor_name && !item.actor_name.includes("@")
               ? item.actor_name
-              : "Creator";
+              : "Unknown";
             return {
               ...item,
               read: true,

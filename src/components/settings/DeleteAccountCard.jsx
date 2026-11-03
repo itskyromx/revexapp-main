@@ -38,7 +38,7 @@ export default function DeleteAccountCard() {
     <div className="acid-card p-4 space-y-3">
       <span className="font-heading font-bold uppercase text-sm block">Delete account</span>
       <p className="text-xs text-muted-foreground">
-        Permanently removes your profile, posts, listings, offers and messages. This can't be undone.
+        Permanently removes your profile, items, listings, offers and messages. This can't be undone.
       </p>
       <button
         onClick={() => { setWord(""); setError(""); setOpen(true); }}
@@ -51,7 +51,7 @@ export default function DeleteAccountCard() {
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display uppercase">Delete your account?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your profile, posts, listings, offers and messages will be erased for good. Type {CONFIRM_WORD} to confirm.
+              Your profile, items, listings, offers and messages will be erased for good. Type {CONFIRM_WORD} to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <input
