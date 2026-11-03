@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase, getCurrentUserProfile } from '@/api/supabaseClient';
 import { AuthContext } from '@/lib/authContextValue';
 
@@ -10,23 +10,39 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings] = useState({ id: 'revex' });
+  const requestVersion = useRef(0);
+  const activeUserId = useRef(null);
 
   useEffect(() => {
     checkUserAuth();
+    let timer;
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      clearTimeout(timer);
+      requestVersion.current += 1;
       if (session?.user) {
-        getCurrentUserProfile().then((u) => {
-          setUser(u);
-          setIsAuthenticated(true);
-          setAuthChecked(true);
-        });
+        const changedAccount = activeUserId.current !== session.user.id;
+        activeUserId.current = session.user.id;
+        if (changedAccount) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoadingAuth(true);
+        }
+        // Leave the auth callback before making further Supabase requests.
+        timer = setTimeout(() => { void checkUserAuth(changedAccount); }, 0);
       } else {
+        activeUserId.current = null;
         setUser(null);
         setIsAuthenticated(false);
+        setIsLoadingAuth(false);
+        setAuthError(null);
         setAuthChecked(true);
       }
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      clearTimeout(timer);
+      requestVersion.current += 1;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const checkAppState = async () => {
@@ -44,16 +60,21 @@ export const AuthProvider = ({ children }) => {
   };
 
   const checkUserAuth = async (showLoader = true) => {
+    const version = ++requestVersion.current;
     try {
       if (showLoader) setIsLoadingAuth(true);
       const currentUser = await getCurrentUserProfile();
+      if (version !== requestVersion.current) return null;
+      setAuthError(null);
       if (currentUser) {
+        activeUserId.current = currentUser.id;
         setUser(currentUser);
         setIsAuthenticated(true);
         setIsLoadingAuth(false);
         setAuthChecked(true);
         return currentUser;
       } else {
+        activeUserId.current = null;
         setUser(null);
         setIsAuthenticated(false);
       }
@@ -61,9 +82,9 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
       return null;
     } catch (error) {
+      if (version !== requestVersion.current) return null;
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
-      setIsAuthenticated(false);
       setAuthChecked(true);
       setAuthError({ type: 'unknown', message: error.message || 'An unexpected error occurred' });
       return null;

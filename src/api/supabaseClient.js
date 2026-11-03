@@ -7,13 +7,17 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function getCurrentUserProfile() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
   if (!user) return null;
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single();
+  // A failed profile request is not evidence of an incomplete registration.
+  if (error) throw error;
+  if (!profile) throw new Error('Unable to load your profile. Please try again.');
   return { ...user, ...profile };
 }
 

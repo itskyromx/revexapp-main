@@ -33,7 +33,7 @@ import CookieConsent from '@/components/CookieConsent';
 // Add page imports here
 
 const AuthenticatedApp = () => {
-  const { user, isAuthenticated, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { user, isAuthenticated, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, checkUserAuth } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking app public settings or auth
@@ -53,6 +53,14 @@ const AuthenticatedApp = () => {
       // Redirect to login automatically
       navigateToLogin();
       return null;
+    }
+    if (!user) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
+          <p>We couldn't load your account. Please try again.</p>
+          <button className="underline" onClick={() => checkUserAuth()}>Try again</button>
+        </div>
+      );
     }
   }
 
