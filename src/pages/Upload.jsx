@@ -229,7 +229,7 @@ export default function UploadPage() {
         </section>
 
         <button disabled={busy || media.length === 0 || !product.title.trim() || !product.description.trim() || !product.price} onClick={publish} className="acid-btn bg-brand-red text-white w-full disabled:opacity-50">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{busy ? "Publishing…" : "Publish article and item"}
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{busy ? "Publishing…" : "Publish item"}
         </button>
       </main>
       <BottomNav />

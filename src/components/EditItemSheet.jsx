@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { supabase, uploadPublicFile } from "@/api/supabaseClient";
 import * as Dialog from "@radix-ui/react-dialog";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import TagChips from "@/components/TagChips";
 import { CONDITION_LABELS, PRODUCT_BRANDS, PRODUCT_CATEGORIES, PRODUCT_GENDERS, PRODUCT_GENDER_LABELS, normalizeTags } from "@/lib/revex";
 
@@ -16,8 +17,29 @@ export default function EditItemSheet({ item, userId, onClose, onSaved }) {
   const [photos, setPhotos] = useState(() => item.image_urls?.length ? [...item.image_urls] : item.image_url ? [item.image_url] : []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const locked = useRef(false);
   const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+
+  const changeArchive = async () => {
+    if (locked.current || userId !== item.created_by_id) return;
+    locked.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const { data: updated, error } = await supabase.from("items")
+        .update({ is_archived: !item.is_archived }).eq("id", item.id)
+        .eq("created_by_id", userId).select().single();
+      if (error) throw error;
+      setConfirmArchive(false);
+      onSaved(updated);
+    } catch (error) {
+      setError(error.message || "Could not change the archive status. Please try again.");
+    } finally {
+      locked.current = false;
+      setBusy(false);
+    }
+  };
 
   const upload = async (files) => {
     if (!files.length || locked.current) return;
@@ -129,8 +151,34 @@ export default function EditItemSheet({ item, userId, onClose, onSaved }) {
             <button type="submit" disabled={busy} className="acid-btn bg-brand-red text-white flex-1 disabled:opacity-50">{busy ? "Saving…" : "Save changes"}</button>
           </div>
         </form>
+        <div className="mt-5 border-t-2 border-border pt-4">
+          <button type="button" disabled={busy}
+            onClick={() => { setError(""); if (item.is_archived) void changeArchive(); else setConfirmArchive(true); }}
+            className="acid-btn w-full bg-muted text-foreground disabled:opacity-50">
+            {item.is_archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+            {item.is_archived ? "Unarchive item" : "Archive item"}
+          </button>
+        </div>
       </Dialog.Content>
       </Dialog.Portal>
+      <AlertDialog.Root open={confirmArchive} onOpenChange={open => { if (!locked.current) setConfirmArchive(open); }}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-[60] bg-black/80" />
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border-[3px] border-border bg-background p-5 shadow-lg">
+            <AlertDialog.Title className="font-display text-xl uppercase">Archive this item?</AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 text-sm text-muted-foreground">
+              Archiving hides this item from other users. It will stay in your profile, and you can unarchive it whenever you want.
+            </AlertDialog.Description>
+            {error && <p role="alert" className="mt-3 text-sm text-brand-red">{error}</p>}
+            <div className="mt-5 flex gap-2">
+              <AlertDialog.Cancel asChild><button disabled={busy} className="acid-btn flex-1 bg-muted">Cancel</button></AlertDialog.Cancel>
+              <button disabled={busy} onClick={() => void changeArchive()} className="acid-btn flex-1 bg-foreground text-background disabled:opacity-50">
+                {busy ? "Archiving…" : "Archive item"}
+              </button>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </Dialog.Root>
   );
 }

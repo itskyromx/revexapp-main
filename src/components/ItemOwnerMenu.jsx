@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 import { Pencil, Rocket, Trash2 } from "lucide-react";
 
 /** Options a creator has on their own item: edit it, boost it, or delete it. */
-export default function ItemOwnerMenu({ open, onEdit, onBoost, onDelete, onClose }) {
+export default function ItemOwnerMenu({ open, onEdit, onBoost, onDelete, onClose, canBoost = true }) {
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <SheetContent
@@ -22,7 +22,8 @@ export default function ItemOwnerMenu({ open, onEdit, onBoost, onDelete, onClose
           </button>
           <button
             onClick={onBoost}
-            className="w-full flex items-center gap-3 px-3 py-3.5 font-heading font-bold uppercase text-sm text-foreground active:bg-muted"
+            disabled={!canBoost}
+            className="w-full flex items-center gap-3 px-3 py-3.5 font-heading font-bold uppercase text-sm text-foreground active:bg-muted disabled:opacity-40"
           >
             <Rocket className="w-5 h-5" />
             Boost item

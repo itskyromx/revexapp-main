@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAuth } from "@/lib/useAuth";
 import { ArrowLeft, Tag, MessageCircle, ShieldCheck, Pencil, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import OfferSheet from "@/components/OfferSheet";
@@ -12,13 +12,13 @@ import { useSaved } from "@/hooks/useSaved";
 import BottomNav from "@/components/BottomNav";
 import { getBlockRelationship } from "@/lib/blocks";
 import { hasCookieConsent } from "@/lib/cookieConsent";
-import { recordItemView } from "@/lib/itemStats";
+import { useItemView } from "@/hooks/useItemView";
 import { toast } from "@/components/ui/use-toast";
 
 export default function ItemDetail() {
   const { itemId } = useParams();
   const navigate = useNavigate();
-  const { user } = useCurrentUser();
+  const { user, isLoadingAuth: loadingViewer } = useAuth();
   const { isSaved } = useSaved(user?.id);
   const [item, setItem] = useState(null);
   const [offers, setOffers] = useState([]);
@@ -31,23 +31,32 @@ export default function ItemDetail() {
   const [blockedRelationship, setBlockedRelationship] = useState(false);
   const [recommendedItems, setRecommendedItems] = useState([]);
   const [imageIndex, setImageIndex] = useState(0);
+  const viewRef = useItemView(item?.id, !loading && !loadingViewer && item?.id === itemId
+    && user?.id !== item?.created_by_id && !blockedRelationship && !item?.is_archived);
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setOffers([]);
+    setBlockedRelationship(false);
     (async () => {
       try {
         const { data: it } = await supabase.from('items').select('*').eq('id', itemId).single();
+        if (!active) return;
+        setItem(it || null);
         if (!it) return;
-        setItem(it);
-        void recordItemView(it.id).catch(error => console.error(error));
         if (it.created_by_id) {
           const { data: of } = await supabase.from('offers').select('*').eq('item_id', itemId);
-          setOffers(of);
+          if (!active) return;
+          setOffers(of || []);
           if (user?.id) {
-            setBlockedRelationship(await getBlockRelationship(user.id, it.created_by_id));
+            const blocked = await getBlockRelationship(user.id, it.created_by_id);
+            if (active) setBlockedRelationship(blocked);
           }
         }
-      } catch (e) { console.error(e); } finally { setLoading(false); }
+      } catch (e) { console.error(e); } finally { if (active) setLoading(false); }
     })();
+    return () => { active = false; };
   }, [itemId, user?.id]);
 
   useEffect(() => {
@@ -76,13 +85,13 @@ export default function ItemDetail() {
       try {
         const { data: semantic, error } = await supabase.functions.invoke("productSemantics", { body: { mode: "similar", itemId: item.id } });
         if (!error && semantic?.itemIds?.length) {
-          const { data } = await supabase.from("items").select("*").in("id", semantic.itemIds).eq("status", "available");
+          const { data } = await supabase.from("items").select("*").in("id", semantic.itemIds).eq("status", "available").eq("is_archived", false);
           const rank = new Map(semantic.itemIds.map((id, index) => [id, index]));
           recommendations = (data || []).sort((a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999));
         }
       } catch {}
       if (!recommendations.length) {
-        let fallback = supabase.from("items").select("*").eq("status", "available").neq("id", item.id);
+        let fallback = supabase.from("items").select("*").eq("status", "available").eq("is_archived", false).neq("id", item.id);
         if (item.category) fallback = fallback.eq("category", item.category);
         const { data } = await fallback.order("created_at", { ascending: false }).limit(8);
         recommendations = data || [];
@@ -172,12 +181,12 @@ export default function ItemDetail() {
     }}).catch(() => {});
   };
 
-  const canBuy = item?.status === "available" && !isOwner && !blockedRelationship && user;
+  const canBuy = item?.status === "available" && !item.is_archived && !isOwner && !blockedRelationship && user;
   const productImages = item?.image_urls?.length ? item.image_urls : item?.image_url ? [item.image_url] : [];
   const currentImage = productImages[imageIndex] || productImages[0];
 
   if (loading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
-  if (!item) return <div className="min-h-screen bg-background grid place-items-center p-6"><div className="acid-card p-6">Item not found.</div></div>;
+  if (!item || (item.is_archived && !isOwner)) return <div className="min-h-screen bg-background grid place-items-center p-6"><div className="acid-card p-6">Item not found.</div></div>;
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -191,7 +200,7 @@ export default function ItemDetail() {
       <div className="max-w-md mx-auto p-4">
         {cancelNotice && <div className="acid-card-sm bg-muted p-3 mb-3 text-xs">{cancelNotice}</div>}
         <div className="acid-card overflow-hidden">
-          <div className="aspect-[4/5] bg-muted border-b-[3px] border-border relative">
+          <div ref={viewRef} className="aspect-[4/5] bg-muted border-b-[3px] border-border relative">
             {currentImage ?
               <img key={`${imageIndex}:${currentImage}`} src={currentImage} className="w-full h-full object-cover animate-item-slide" alt={item.title} /> :
               <div className="w-full h-full grid-bg" />}

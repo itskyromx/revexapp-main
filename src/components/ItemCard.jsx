@@ -42,7 +42,11 @@ export default function ItemCard({ item, onClick, saved = false, onToggleSave = 
         </div>
       </button>
 
-      {onToggleSave && (
+      {item.is_archived ? (
+        <span className="absolute top-1.5 right-1.5 z-10 sticker bg-black/80 text-white border-white/30 px-2 py-1 text-[10px] font-heading lowercase">
+          ARCHIVED
+        </span>
+      ) : onToggleSave && (
         <button
           onClick={onToggleSave}
           aria-label={saved ? "Remove from saved" : "Save for later"}

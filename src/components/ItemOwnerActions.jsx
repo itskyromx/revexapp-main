@@ -20,10 +20,15 @@ export default function ItemOwnerActions({ item, onChanged = undefined, onDelete
       </button>
     )}
     {isOwner && <>
-      <ItemOwnerMenu open={action === "menu"} onClose={close}
+      <ItemOwnerMenu open={action === "menu"} onClose={close} canBoost={!item.is_archived}
         onEdit={() => setAction("edit")} onBoost={() => setAction("boost")} onDelete={() => setAction("delete")} />
       {action === "edit" && <EditItemSheet item={item} userId={user.id} onClose={close}
-        onSaved={(updated) => { close(); toast({ title: "Item updated" }); onChanged?.(updated); }} />}
+        onSaved={(updated) => {
+          close();
+          toast({ title: Boolean(updated.is_archived) !== Boolean(item.is_archived)
+            ? updated.is_archived ? "Item archived" : "Item unarchived" : "Item updated" });
+          onChanged?.(updated);
+        }} />}
       {action === "boost" && <BoostSheet item={item} onClose={close} />}
       {action === "delete" && <DeleteItemDialog item={item} onClose={close}
         onDeleted={() => { close(); onDeleted?.(); }} />}

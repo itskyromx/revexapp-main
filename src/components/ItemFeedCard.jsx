@@ -8,7 +8,8 @@ import { timeAgo } from "@/lib/revex";
 import { useAuth } from "@/lib/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { toggleBookmark } from "@/lib/bookmarks";
-import { refreshItemCounters, recordItemView, toggleItemLike } from "@/lib/itemStats";
+import { refreshItemCounters, toggleItemLike } from "@/lib/itemStats";
+import { useItemView } from "@/hooks/useItemView";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import BoostBadge from "@/components/BoostBadge";
@@ -48,10 +49,7 @@ export default function ItemFeedCard({ item, onOpenProfile, chromeVisible = true
 
   const saved = isSaved("item", item.id);
   const isOwner = Boolean(user && item.created_by_id === user.id);
-
-  useEffect(() => {
-    recordItemView(item.id).catch(error => console.error(error));
-  }, [item.id]);
+  const viewRef = useItemView(item.id, !isOwner && !item.is_archived);
 
   const requireLogin = () => {
     if (user?.id) return false;
@@ -121,17 +119,6 @@ export default function ItemFeedCard({ item, onOpenProfile, chromeVisible = true
       setLikeState({ userId: actingUserId, itemId: item.id, liked: result.liked });
       setLikeCount(result.like_count || 0);
       onChanged?.({ id: item.id, like_count: result.like_count });
-      if (result.liked && item.created_by_id) {
-        supabase.functions.invoke("sendNotification", { body: {
-          recipientId: item.created_by_id,
-          content: `liked your item "${item.title}"`,
-          type: "like",
-          targetType: "item",
-          targetId: item.id,
-          thumbnail: item.image_urls?.[0] || "",
-          inAppOnly: true,
-        }}).catch(() => {});
-      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -218,7 +205,7 @@ export default function ItemFeedCard({ item, onOpenProfile, chromeVisible = true
   };
 
   return (
-    <div className="relative w-full h-full snap-start overflow-hidden bg-black noise-overlay">
+    <div ref={viewRef} className="relative w-full h-full snap-start overflow-hidden bg-black noise-overlay">
       {/* Media */}
       <div className="absolute inset-0">
         {current?.url ? (

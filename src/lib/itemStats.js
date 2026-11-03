@@ -2,6 +2,17 @@ import { supabase } from "@/api/supabaseClient";
 import { hasCookieConsent } from "@/lib/cookieConsent";
 
 const viewedThisSession = new Set();
+const VIEWED_ITEMS_KEY = "revex-viewed-items";
+
+function rememberedViews() {
+  if (!hasCookieConsent("preferences")) return [];
+  try {
+    const stored = JSON.parse(localStorage.getItem(VIEWED_ITEMS_KEY) || "[]");
+    return Array.isArray(stored) ? stored.filter(id => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Re-read denormalised counters from the items table after a feed function
@@ -11,7 +22,9 @@ const viewedThisSession = new Set();
  *   id: string,
  *   like_count: number,
  *   bookmark_count: number,
- *   view_count: number
+ *   view_count: number,
+ *   share_count: number,
+ *   is_archived: boolean
  * }>>} */
 export async function refreshItemCounters(itemIds) {
   const ids = [...new Set(itemIds.filter(Boolean))];
@@ -19,7 +32,7 @@ export async function refreshItemCounters(itemIds) {
 
   const { data, error } = await supabase
     .from("items")
-    .select("id, like_count, bookmark_count, view_count, share_count")
+    .select("id, like_count, bookmark_count, view_count, share_count, is_archived")
     .in("id", ids);
 
   if (error) throw error;
@@ -34,8 +47,8 @@ export async function toggleItemLike(itemId) {
 }
 
 /**
- * Count a view once per browser and item. Repeated renders must not create
- * duplicate view increments.
+ * Deduplicate qualified views across feed/detail mounts in this page session.
+ * Persist deduplication across visits only with preferences consent.
  * @param {string} itemId
  * @returns {Promise<{
  *   id: string,
@@ -47,17 +60,7 @@ export async function toggleItemLike(itemId) {
 export async function recordItemView(itemId) {
   if (!itemId) return null;
 
-  const key = "revex-viewed-items";
-  let viewed = [];
-  const canRememberViews = hasCookieConsent("preferences");
-  if (canRememberViews) {
-    try {
-      viewed = JSON.parse(localStorage.getItem(key) || "[]");
-    } catch {
-      viewed = [];
-    }
-  }
-  if (viewedThisSession.has(itemId) || viewed.includes(itemId)) return null;
+  if (viewedThisSession.has(itemId) || rememberedViews().includes(itemId)) return null;
 
   // Reserve the ID before awaiting: feed/detail effects can overlap.
   viewedThisSession.add(itemId);
@@ -65,9 +68,10 @@ export async function recordItemView(itemId) {
     const { data: updated, error } = await supabase.rpc("record_item_view", { p_item_id: itemId });
     if (error) throw error;
     if (!updated) { viewedThisSession.delete(itemId); return null; }
-    if (canRememberViews) {
-      viewed.push(itemId);
-      try { localStorage.setItem(key, JSON.stringify(viewed)); } catch {}
+    if (hasCookieConsent("preferences")) {
+      // Other qualified items may have finished while this request was pending.
+      const viewed = [...new Set([...rememberedViews(), itemId])];
+      try { localStorage.setItem(VIEWED_ITEMS_KEY, JSON.stringify(viewed)); } catch {}
     }
     return updated;
   } catch (error) {

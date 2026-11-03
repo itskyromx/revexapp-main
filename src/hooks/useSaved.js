@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 
 /**
@@ -10,10 +10,16 @@ let rows = [];
 let ownerId = null;
 let inFlight = null;
 let generation = 0;
+let loadError = null;
+const mutations = new Map();
 const listeners = new Set();
 
+function currentSnapshot() {
+  return { ownerId, rows: [...rows], loading: Boolean(inFlight), error: loadError };
+}
+
 function emit() {
-  const snapshot = { ownerId, rows: [...rows] };
+  const snapshot = currentSnapshot();
   listeners.forEach((fn) => fn(snapshot));
 }
 
@@ -29,6 +35,8 @@ export async function loadSaves(userId) {
       ownerId = null;
       rows = [];
       inFlight = null;
+      loadError = null;
+      mutations.clear();
       emit();
     }
     return;
@@ -38,9 +46,20 @@ export async function loadSaves(userId) {
     ownerId = userId;
     rows = [];
     inFlight = null;
+    loadError = null;
+    mutations.clear();
     emit();
   }
   if (inFlight) return inFlight;
+  const pendingMutations = [...mutations.entries()]
+    .filter(([key]) => key.startsWith(`${userId}:`)).map(([, operation]) => operation);
+  if (pendingMutations.length) {
+    const refreshGeneration = generation;
+    return Promise.allSettled(pendingMutations).then(() => {
+      if (ownerId === userId && generation === refreshGeneration) return loadSaves(userId);
+    });
+  }
+  loadError = null;
   const requestGeneration = generation;
   const request = supabase.from('saved').select('*').eq('user_id', userId)
     .order('created_at', { ascending: false }).limit(300)
@@ -50,9 +69,14 @@ export async function loadSaves(userId) {
       rows = data || [];
       emit();
     })
-    .catch((e) => console.error(e))
-    .finally(() => { if (inFlight === request) inFlight = null; });
+    .catch((error) => {
+      if (requestGeneration === generation && ownerId === userId) loadError = error.message || "Could not load saved items.";
+    })
+    .finally(() => {
+      if (inFlight === request) { inFlight = null; emit(); }
+    });
   inFlight = request;
+  emit();
   return request;
 }
 
@@ -64,10 +88,22 @@ async function reload(userId) {
 }
 
 /** Bookmark or un-bookmark something. Returns the new state. */
-export async function toggleSave(userId, kind, targetId) {
+export function toggleSave(userId, kind, targetId) {
+  if (!userId) return Promise.resolve(false);
+  const key = `${userId}:${kind}:${targetId}`;
+  if (mutations.has(key)) return mutations.get(key);
+  const operation = performToggle(userId, kind, targetId).finally(() => {
+    if (mutations.get(key) === operation) mutations.delete(key);
+  });
+  mutations.set(key, operation);
+  return operation;
+}
+
+async function performToggle(userId, kind, targetId) {
   if (!userId) return false;
   if (ownerId !== userId || inFlight) await loadSaves(userId);
   if (ownerId !== userId) return false;
+  if (loadError) throw new Error(loadError);
   const actionGeneration = generation;
 
   const existing = rows.find((r) => r.kind === kind && r.target_id === targetId);
@@ -102,20 +138,24 @@ export async function toggleSave(userId, kind, targetId) {
 }
 
 export function useSaved(userId) {
-  const [snapshot, setSnapshot] = useState(() => ({ ownerId, rows: [...rows] }));
+  const [snapshot, setSnapshot] = useState(currentSnapshot);
 
   useEffect(() => {
     const unsubscribe = subscribe(setSnapshot);
     loadSaves(userId);
-    setSnapshot({ ownerId, rows: [...rows] });
+    setSnapshot(currentSnapshot());
     return unsubscribe;
   }, [userId]);
 
-  const visibleRows = userId && snapshot.ownerId === userId
+  const visibleRows = useMemo(() => userId && snapshot.ownerId === userId
     ? snapshot.rows.filter(row => row.user_id === userId)
-    : [];
+    : [], [userId, snapshot.ownerId, snapshot.rows]);
+  const refresh = useCallback(() => loadSaves(userId), [userId]);
   return {
     saves: visibleRows,
+    loading: Boolean(userId && (snapshot.ownerId !== userId || snapshot.loading)),
+    error: userId && snapshot.ownerId === userId ? snapshot.error : null,
+    refresh,
     isSaved: (kind, targetId) => visibleRows.some((r) => r.kind === kind && r.target_id === targetId),
     toggle: (kind, targetId) => toggleSave(userId, kind, targetId),
   };

@@ -33,7 +33,7 @@ export default function Watch() {
         supabase.functions.invoke("getFeed", { body: { mode: "fyp" } }),
         getBlockedIds(),
       ]);
-      const itemsFromFeed = hideBlocked(res.data?.items || [], blockedIds);
+      const itemsFromFeed = hideBlocked(res.data?.items || [], blockedIds).filter(item => !item.is_archived);
       const counters = await refreshItemCounters(itemsFromFeed.map((item) => item.id));
       const next = await enrichItemCreators(itemsFromFeed.map((item) => ({
         ...item,
@@ -101,7 +101,7 @@ export default function Watch() {
               {items.map((p) => (
                 <div key={p.id} className="h-full w-full snap-start">
                   <ItemFeedCard item={p} onOpenProfile={(uid) => navigate(`/profile/${uid}`)}
-                    onChanged={updated => setItems(current => current.map(item => item.id === updated.id ? { ...item, ...updated } : item))}
+                    onChanged={updated => setItems(current => current.map(item => item.id === updated.id ? { ...item, ...updated } : item).filter(item => !item.is_archived))}
                     onDeleted={() => setItems(current => current.filter(item => item.id !== p.id))} />
                 </div>
               ))}

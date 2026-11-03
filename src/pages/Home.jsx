@@ -21,8 +21,8 @@ export default function Home() {
     (async () => {
       try {
         const [itemsRes, trendingRes, blockedIds] = await Promise.all([
-          supabase.from('items').select('*').eq('status', 'available').order('created_at', { ascending: false }).limit(12),
-          supabase.from('items').select('*').order('like_count', { ascending: false }).limit(8),
+          supabase.from('items').select('*').eq('status', 'available').eq('is_archived', false).order('created_at', { ascending: false }).limit(12),
+          supabase.from('items').select('*').eq('is_archived', false).order('like_count', { ascending: false }).limit(8),
           getBlockedIds(),
         ]);
         setItems(hideBlocked(itemsRes.data || [], blockedIds));

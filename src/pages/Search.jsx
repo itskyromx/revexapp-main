@@ -30,7 +30,7 @@ export default function Search() {
     (async () => {
       try {
         const [itemsRes, blockedIds, hiddenRes] = await Promise.all([
-          supabase.from('items').select('*').eq('status', 'available').order('created_at', { ascending: false }).limit(60),
+          supabase.from('items').select('*').eq('status', 'available').eq('is_archived', false).order('created_at', { ascending: false }).limit(60),
           getBlockedIds(),
           supabase.functions.invoke("getHiddenUserIds", { body: {} }).catch(() => ({ data: { ids: [] } }))
         ]);
@@ -121,7 +121,7 @@ export default function Search() {
     const knownIds = new Set(items.map((item) => item.id));
     const missingIds = semanticIds.filter((id) => !knownIds.has(id));
     if (!missingIds.length) return;
-    supabase.from("items").select("*").in("id", missingIds).then(({ data, error }) => {
+    supabase.from("items").select("*").in("id", missingIds).eq("is_archived", false).then(({ data, error }) => {
       if (error || !data?.length) return;
       setItems((current) => [...current, ...data.filter((item) => !current.some((existing) => existing.id === item.id))]);
     }).catch((error) => console.error("Could not load semantic product results", error));

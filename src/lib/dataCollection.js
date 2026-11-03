@@ -35,11 +35,11 @@ export const DATA_COLLECTION_AREAS = [
   },
   {
     title: "Content and media",
-    details: "Items, descriptions, tags and listing details, photos, videos, avatars and files uploaded to the platform's media storage.",
+    details: "Items, descriptions, tags, listing details and archive/visibility choices, photos, videos, avatars and files uploaded to the platform's media storage.",
   },
   {
     title: "Platform activity",
-    details: "Likes, views, shares, bookmarks, follows, blocks, searches sent to the profile search, notifications, chat messages, read status and message deletion records.",
+    details: "Likes, views, shares, bookmarks, follows, blocks, searches sent to the profile search, notifications, chat messages, read status and message deletion records. To prevent notification spam, Revex keeps a private record of the user, item and recipient already notified about a like, even after the like or notification is removed; that record is deleted when the item or either account is deleted.",
   },
   {
     title: "Semantic search and recommendations",

@@ -32,6 +32,7 @@ export async function handleBoostItem(req: Request) {
       if (error) throw error;
       return Response.json({ boost_expires_at: expiry }, { headers: corsHeaders });
     }
+    if (item.is_archived) throw new Error('Unarchive this item before boosting it');
     if (item.status !== 'available') throw new Error('Only available items can be boosted');
     const origin = safeOrigin(body.origin);
     const requestOrigin = req.headers.get('Origin');

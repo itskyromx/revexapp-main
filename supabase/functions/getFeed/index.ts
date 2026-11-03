@@ -17,7 +17,7 @@ export async function handleFeed(req: Request) {
     ]) : [{ data: null }, { data: [] }, { data: [] }];
     const following = new Set((follows || []).map(f => f.followee_id));
     const hidden = new Set((blocks || []).flatMap(b => [b.blocker_id, b.blocked_id]).filter(id => id !== user?.id));
-    let query = client.from('items').select('*').eq('status', 'available').order('created_at', { ascending: false }).limit(200);
+    let query = client.from('items').select('*').eq('status', 'available').eq('is_archived', false).order('created_at', { ascending: false }).limit(200);
     if (body.mode === 'friends') {
       if (following.size) query = query.in('created_by_id', [...following]);
       else return Response.json({ items: [], posts: [], nextCursor: null, hasMore: false }, { headers: corsHeaders });

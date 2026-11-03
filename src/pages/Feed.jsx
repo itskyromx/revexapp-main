@@ -82,7 +82,8 @@ export default function Feed() {
       .then((counters) => {
         if (!active) return;
         setItems((current) => {
-          const refreshed = current.map((item) => ({ ...item, ...(counters[item.id] || {}) }));
+          const refreshed = current.filter(item => counters[item.id] && !counters[item.id].is_archived)
+            .map(item => ({ ...item, ...counters[item.id] }));
           feedCache = { ...feedCache, items: refreshed };
           return refreshed;
         });
@@ -178,7 +179,7 @@ export default function Feed() {
                 }}
                 onChanged={(updated) => {
                   setItems((current) => {
-                    const next = current.map((item) => item.id === updated.id ? { ...item, ...updated } : item);
+                    const next = current.map((item) => item.id === updated.id ? { ...item, ...updated } : item).filter(item => !item.is_archived);
                     feedCache = { ...(feedCache || {}), items: next };
                     return next;
                   });
