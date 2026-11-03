@@ -53,7 +53,10 @@ export default function ProfileSection({ user, setUser }) {
       const { error } = await supabase.from('profiles')
         .update({ display_name: username, bio: bio.trim(), avatar }).eq('id', user.id);
       if (error) throw error;
-      // keep the name on already published items and listings in sync
+      // keep the name on already published posts and listings in sync
+      await supabase.from('posts')
+        .update({ creator_name: label, creator_avatar: avatar }).eq('created_by_id', user.id)
+        .then(() => {});
       await supabase.from('items')
         .update({ seller_name: label, seller_avatar: avatar }).eq('created_by_id', user.id)
         .then(() => {});
@@ -97,7 +100,7 @@ export default function ProfileSection({ user, setUser }) {
           maxLength={20}
         />
         <p className="text-[11px] text-muted-foreground mt-1">
-          {t("Your unique name across Revex, shown on your profile, items, listings and chats.")}
+          {t("Your unique name across Revex, shown on your profile, posts, listings and chats.")}
         </p>
       </div>
 

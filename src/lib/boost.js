@@ -14,8 +14,8 @@ export function perDay(pkg) {
   return formatEuro(pkg.price / (pkg.hours / 24)) + "/day";
 }
 
-export function boostActive(item) {
-  const at = item?.boost_expires_at ? new Date(item.boost_expires_at).getTime() : 0;
+export function boostActive(post) {
+  const at = post?.boost_expires_at ? new Date(post.boost_expires_at).getTime() : 0;
   return Boolean(at) && !isNaN(at) && at > Date.now();
 }
 

@@ -10,13 +10,13 @@ export default function PrivacyPolicy() {
     >
       <p>
         This Privacy Policy explains how Revex handles information when you create an account,
-        browse or item content, message other users, or buy and sell through the Service. The
+        browse or post content, message other users, or buy and sell through the Service. The
         specific legal rights available to you depend on where you live.
       </p>
       <LegalSection title="1. Information we collect">
         <ul className="list-disc space-y-2 pl-6">
           <li><strong>Account information:</strong> email address, username, account identifier, and the profile details you choose to add, such as display name, avatar, bio, preferences, and account settings.</li>
-          <li><strong>Content and activity:</strong> items, photos, videos, listings, likes, bookmarks, follows, reports, and information about how you use platform features.</li>
+          <li><strong>Content and activity:</strong> posts, photos, videos, listings, likes, bookmarks, follows, reports, and information about how you use platform features.</li>
           <li><strong>Product search and recommendations:</strong> when you use these features, your search query, public article descriptions, and selected style and brand preferences are processed to create multilingual embeddings for matching products.</li>
           <li><strong>Communications:</strong> messages and related delivery or read information needed to operate chats and notifications.</li>
           <li><strong>Transactions:</strong> order, offer, item, shipping, payout, and payment-status information. Payment providers may collect and process card or bank details directly.</li>
@@ -27,7 +27,7 @@ export default function PrivacyPolicy() {
         <p>We use information to:</p>
         <ul className="list-disc space-y-2 pl-6">
           <li>create and secure accounts, verify email addresses, and provide sign-in;</li>
-          <li>show profiles, feeds, items, listings, follower lists, and messages according to your settings;</li>
+          <li>show profiles, feeds, posts, listings, follower lists, and messages according to your settings;</li>
           <li>enable offers, orders, payments, shipping, payouts, and transaction support;</li>
           <li>send service notifications, account notices, and requested updates;</li>
           <li>respond to reports, enforce our rules, prevent fraud and abuse, and protect users;</li>
@@ -43,7 +43,7 @@ export default function PrivacyPolicy() {
       </LegalSection>
       <LegalSection title="3. What other users can see">
         <p>
-          Your username and information you place on a public profile, item, or listing can be seen
+          Your username and information you place on a public profile, post, or listing can be seen
           by other users. Public media may be delivered through publicly accessible media links.
           Follower and following relationships may appear in profile lists. Messages are available
           to the participants in that conversation. Do not include sensitive information in public

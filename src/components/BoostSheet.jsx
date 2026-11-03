@@ -6,10 +6,10 @@ import { BOOST_PACKAGES, formatEuro, perDay } from "@/lib/boost";
 import { isEmbedded } from "@/lib/payments";
 
 /**
- * Boost packages for an item. Picking one hands off to Stripe — the item is
+ * Boost packages for a post. Picking one hands off to Stripe — the post is
  * pinned to the top of the For You feed once the payment clears.
  */
-export default function BoostSheet({ item, onClose }) {
+export default function BoostSheet({ post, onClose }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
 
@@ -21,9 +21,9 @@ export default function BoostSheet({ item, onClose }) {
     setBusy(pkg.id);
     setError("");
     try {
-      const res = await supabase.functions.invoke("boostItem", { body: {
+      const res = await supabase.functions.invoke("boostPost", { body: {
         action: "start",
-        itemId: item.id,
+        postId: post.id,
         packageId: pkg.id,
         origin: window.location.origin,
       }});
@@ -45,10 +45,10 @@ export default function BoostSheet({ item, onClose }) {
         className="mx-auto max-w-md rounded-t-2xl border-t-[3px] border-border bg-card p-5 pb-6 max-h-[90vh] overflow-y-auto"
       >
         <SheetTitle className="font-display text-xl uppercase flex items-center gap-2">
-          <Rocket className="w-5 h-5" /> Boost item
+          <Rocket className="w-5 h-5" /> Boost post
         </SheetTitle>
         <SheetDescription className="text-xs text-muted-foreground">
-          Boosted items sit at the top of the For You feed for as long as you pick.
+          Boosted posts sit at the top of the For You feed for as long as you pick.
         </SheetDescription>
 
         <div className="space-y-2 mt-4">

@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient";
 import { Home, Compass, Users, Plus, User, Inbox, Loader2 } from "lucide-react";
-import ItemFeedCard from "@/components/ItemFeedCard";
+import HaulCard from "@/components/HaulCard";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
-import { enrichItemCreators } from "@/lib/profileData";
-import { refreshItemCounters } from "@/lib/itemStats";
+import { enrichPostCreators } from "@/lib/profileData";
+import { refreshPostCounters } from "@/lib/postStats";
 
 const NAV = [
   { to: "/home", icon: Home, label: "Home" },
@@ -20,26 +20,26 @@ export default function Watch() {
   const navigate = useNavigate();
   const location = useLocation();
   /** @type {Array<any>} */
-  const [items, setItems] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(null);
 
   const fetchFeed = useCallback(async () => {
     setLoading(true);
-    setItems([]);
+    setPosts([]);
     setCursor(null);
     try {
       const [res, blockedIds] = await Promise.all([
         supabase.functions.invoke("getFeed", { body: { mode: "fyp" } }),
         getBlockedIds(),
       ]);
-      const itemsFromFeed = hideBlocked(res.data?.items || [], blockedIds).filter(item => !item.is_archived);
-      const counters = await refreshItemCounters(itemsFromFeed.map((item) => item.id));
-      const next = await enrichItemCreators(itemsFromFeed.map((item) => ({
-        ...item,
-        ...counters[item.id],
+      const postsFromFeed = hideBlocked(res.data?.posts || [], blockedIds);
+      const counters = await refreshPostCounters(postsFromFeed.map((post) => post.id));
+      const next = await enrichPostCreators(postsFromFeed.map((post) => ({
+        ...post,
+        ...counters[post.id],
       })));
-      setItems(next);
+      setPosts(next);
       setCursor(res.data.nextCursor);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, []);
@@ -53,13 +53,13 @@ export default function Watch() {
         supabase.functions.invoke("getFeed", { body: { mode: "fyp", cursor } }),
         getBlockedIds(),
       ]);
-      const itemsFromFeed = hideBlocked(res.data?.items || [], blockedIds);
-      const counters = await refreshItemCounters(itemsFromFeed.map((item) => item.id));
-      const more = await enrichItemCreators(itemsFromFeed.map((item) => ({
-        ...item,
-        ...counters[item.id],
+      const postsFromFeed = hideBlocked(res.data?.posts || [], blockedIds);
+      const counters = await refreshPostCounters(postsFromFeed.map((post) => post.id));
+      const more = await enrichPostCreators(postsFromFeed.map((post) => ({
+        ...post,
+        ...counters[post.id],
       })));
-      setItems((p) => [...p, ...more]);
+      setPosts((p) => [...p, ...more]);
       setCursor(res.data.nextCursor);
     } catch {}
   };
@@ -91,18 +91,16 @@ export default function Watch() {
         <div className="h-full w-full max-w-[460px] overflow-y-scroll snap-y snap-mandatory no-scrollbar">
           {loading ? (
             <div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>
-          ) : items.length === 0 ? (
+          ) : posts.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-6">
-              <p className="font-display text-2xl uppercase">No items yet</p>
+              <p className="font-display text-2xl uppercase">No posts yet</p>
               <p className="text-sm text-white/70 mt-1">Be the first to upload!</p>
             </div>
           ) : (
             <>
-              {items.map((p) => (
+              {posts.map((p) => (
                 <div key={p.id} className="h-full w-full snap-start">
-                  <ItemFeedCard item={p} onOpenProfile={(uid) => navigate(`/profile/${uid}`)}
-                    onChanged={updated => setItems(current => current.map(item => item.id === updated.id ? { ...item, ...updated } : item).filter(item => !item.is_archived))}
-                    onDeleted={() => setItems(current => current.filter(item => item.id !== p.id))} />
+                  <HaulCard post={p} onOpenProfile={(uid) => navigate(`/profile/${uid}`)} />
                 </div>
               ))}
               {cursor && (

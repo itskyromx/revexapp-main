@@ -4,13 +4,3 @@
 !.dev.vars.example
 .env*
 !.env.example
-
-# dependencies
-node_modules/
-.tmp/
-
-supabase\functions
-.agents\skills
-.claude\skills
-AGENTS.md
-.docs/

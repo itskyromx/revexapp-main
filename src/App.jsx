@@ -22,7 +22,7 @@ import Home from '@/pages/Home';
 import Watch from '@/pages/Watch';
 import Search from '@/pages/Search';
 import Onboarding from '@/pages/Onboarding';
-import LegacyItemRedirect from '@/pages/LegacyItemRedirect';
+import HaulDetail from '@/pages/HaulDetail';
 import Reports from '@/pages/Reports';
 import Orders from '@/pages/Orders';
 import SettingsPage from '@/pages/Settings';
@@ -79,7 +79,7 @@ const AuthenticatedApp = () => {
       <Route path="/watch" element={<Watch />} />
       <Route path="/search" element={<Search />} />
       <Route path="/onboarding" element={<Onboarding />} />
-      <Route path="/haul/:legacyId" element={<LegacyItemRedirect />} />
+      <Route path="/haul/:postId" element={<HaulDetail />} />
       <Route path="/reports" element={<Reports />} />
       <Route path="/orders" element={<Orders />} />
       <Route path="/settings" element={<SettingsPage />} />

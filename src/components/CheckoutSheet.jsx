@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { X, ShieldCheck, Loader2, Truck, ChevronDown, CreditCard, MapPin, House, PackageCheck } from "lucide-react";
+import { X, ShieldCheck, Loader2, Truck, ChevronDown, CreditCard, Apple, MapPin, House, PackageCheck } from "lucide-react";
 import { orderTotals, formatMoney, isEmbedded } from "@/lib/payments";
 import PickupPointMap from "@/components/PickupPointMap";
-import mbWayLogo from "@/assets/mbway.jpg";
-import applePayLogo from "@/assets/apple_pay.png";
 
 function PaymentIcon({ method }) {
-  if (method === "mb_way") return <img src={mbWayLogo} alt="" className="h-6 w-10 rounded object-contain" />;
-  if (method === "apple_pay") return <img src={applePayLogo} alt="" className="h-6 w-10 rounded object-contain" />;
+  if (method === "mb_way") return <span aria-hidden="true" className="inline-flex h-6 min-w-12 items-center justify-center rounded bg-[#ed1c24] px-1 text-[9px] font-black tracking-tight text-white">MB WAY</span>;
+  if (method === "apple_pay") return <span aria-hidden="true" className="inline-flex items-center gap-0.5"><Apple className="h-5 w-5 fill-current" /><span className="text-sm font-semibold normal-case">Pay</span></span>;
   return <CreditCard className="h-5 w-5" />;
 }
 
@@ -38,13 +36,7 @@ export default function CheckoutSheet({ item, offer, onClose }) {
     [options, deliveryType, deliveryCountry],
   );
   const option = deliveryOptions.find((shippingOption) => shippingOption.id === optionId);
-  // Until shipping rates are configured, allow checkout with zero shipping so
-  // the payment flow can be tested independently of carrier integrations.
-  const testShippingOption = deliveryOptions.length === 0
-    ? { id: null, price: 0, name: "Shipping (test — no carrier rate)" }
-    : null;
-  const checkoutOption = option || testShippingOption;
-  const totals = orderTotals(price, checkoutOption ? checkoutOption.price : 0);
+  const totals = orderTotals(price, option ? option.price : 0);
   const previewServices = deliveryType === "home"
     ? [{ id: "ctt-home", carrier: "CTT", name: "Home delivery" }, { id: "dhl-home", carrier: "DHL", name: "Home delivery" }]
     : [{ id: "ctt-pickup", carrier: "CTT", name: "Collection point" }, { id: "inpost-locker", carrier: "InPost", name: "Parcel locker" }, { id: "dhl-point", carrier: "DHL", name: "ServicePoint" }];
@@ -80,7 +72,7 @@ export default function CheckoutSheet({ item, offer, onClose }) {
   }, [deliveryType, deliveryOptions]);
 
   const pay = async () => {
-    if (!checkoutOption || !user) return;
+    if (!option || !user) return;
     if (deliveryType === "home" && !address.trim()) {
       setError("Enter the delivery address.");
       return;
@@ -115,23 +107,24 @@ export default function CheckoutSheet({ item, offer, onClose }) {
         item_id: item.id,
         item_title: item.title,
         item_image: item.image_url || "",
+        post_id: item.post_id || "",
         buyer_id: user.id,
         buyer_name: user.display_name || user.full_name || user.email,
         seller_id: item.created_by_id,
         seller_name: item.seller_name || "",
         offer_id: offer?.id || null,
         item_price: price,
-        shipping_price: Number(checkoutOption.price) || 0,
+        shipping_price: Number(option.price) || 0,
         buyer_protection_fee: totals.fee,
         total: totals.total,
-        shipping_option_id: checkoutOption.id,
-        shipping_option_name: checkoutOption.name,
+        shipping_option_id: option.id,
+        shipping_option_name: option.name,
         shipping_address: shippingAddress,
         delivery_type: deliveryType,
         delivery_country: deliveryCountry,
         pickup_location: deliveryType === "pickup" ? { ...pickupLocation, country: deliveryCountry } : null,
-        drop_off_point: deliveryType === "pickup" ? `${pickupLocation.name.trim()} — ${pickupLocation.address.trim()}, ${deliveryCountry}` : checkoutOption.drop_off_point || "",
-        drop_off_instructions: checkoutOption.drop_off_instructions || "",
+        drop_off_point: deliveryType === "pickup" ? `${pickupLocation.name.trim()} — ${pickupLocation.address.trim()}, ${deliveryCountry}` : option.drop_off_point || "",
+        drop_off_instructions: option.drop_off_instructions || "",
         status: "awaiting_payment",
       }).select().single();
       if (orderError) throw orderError;
@@ -239,7 +232,7 @@ export default function CheckoutSheet({ item, offer, onClose }) {
                 <span className="shrink-0 text-right font-heading text-xs font-bold">Price after<br />connection</span>
               </button>)}
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">Test checkout: no carrier rate is configured, so shipping is set to €0. Configure shipping rates before accepting real orders.</p>
+            <p className="mt-2 text-[10px] text-muted-foreground">The buyer pays shipping. Carrier rates are not connected yet, so checkout stays unavailable until the exact price is provided.</p>
           </> : <div className="mt-1 space-y-2">
             {deliveryOptions.map((shippingOption) => <button key={shippingOption.id} type="button" aria-pressed={optionId === shippingOption.id} onClick={() => setOptionId(shippingOption.id)} className={`acid-card-sm flex w-full items-center justify-between gap-2 p-2.5 text-left ${optionId === shippingOption.id ? "bg-brand-red text-white" : "bg-card text-foreground"}`}>
               <span className="min-w-0"><span className="block truncate font-heading text-sm font-bold">{shippingOption.name}</span><span className={`text-[11px] ${optionId === shippingOption.id ? "text-white/80" : "text-muted-foreground"}`}>{shippingOption.carrier ? `${shippingOption.carrier} · ` : ""}{shippingOption.eta_days || "2–4 days"}</span></span>
@@ -249,7 +242,7 @@ export default function CheckoutSheet({ item, offer, onClose }) {
         </section>
 
         {error && <p role="alert" className="mt-3 text-xs text-brand-red">{error}</p>}
-        <button onClick={pay} disabled={busy || !checkoutOption || loading} className="acid-btn mt-4 w-full bg-brand-red text-white disabled:opacity-50">
+        <button onClick={pay} disabled={busy || !option || loading} className="acid-btn mt-4 w-full bg-brand-red text-white disabled:opacity-50">
           {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Opening secure payment…</> : `Pay ${formatMoney(totals.total)}`}
         </button>
       </div>

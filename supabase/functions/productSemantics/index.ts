@@ -100,9 +100,9 @@ Deno.serve(async (req) => {
     if (mode === "upsert") {
       const itemId = String(body.itemId || "");
       if (!itemId) return response({ error: "A product ID is required." }, 400);
-      const { data: owned } = await client.from("items").select("id").eq("id", itemId).eq("created_by_id", user.id).eq("is_archived", false).maybeSingle();
+      const { data: owned } = await client.from("items").select("id").eq("id", itemId).eq("created_by_id", user.id).maybeSingle();
       if (!owned) return response({ error: "Product not found." }, 404);
-      const { data: item, error } = await client.from("items").select("*").eq("id", itemId).eq("is_archived", false).maybeSingle();
+      const { data: item, error } = await admin.from("items").select("*").eq("id", itemId).maybeSingle();
       if (error || !item) return response({ error: "Product not found." }, 404);
       const embedding = await embed(productText(item));
       const { error: storeError } = await index.putVectors({ vectors: [{
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     } else if (mode === "similar") {
       const itemId = String(body.itemId || "");
       if (!itemId) return response({ error: "A product ID is required." }, 400);
-      const { data: product } = await client.from("items").select("*").eq("id", itemId).eq("is_archived", false).maybeSingle();
+      const { data: product } = await admin.from("items").select("*").eq("id", itemId).maybeSingle();
       if (!product) return response({ error: "Product not found." }, 404);
       const preferences = await getPreferences(client, user.id);
       queryText = `${productText(product)}${preferences.length ? ` | Viewer preferences: ${preferences.join(", ")}` : ""}`;
@@ -149,14 +149,7 @@ Deno.serve(async (req) => {
     if (error) throw error;
     const itemIds = (data?.vectors || []).map((match) => String(match.metadata?.item_id || match.key))
       .filter((id) => id && (mode !== "similar" || id !== String(body.itemId || "")));
-    if (!itemIds.length) return response({ itemIds: [] });
-    // Vector metadata may predate an archive action. Recheck live visibility
-    // through the caller's RLS permissions before returning any identifiers.
-    const { data: visibleItems, error: visibilityError } = await client.from("items").select("id")
-      .in("id", itemIds).eq("status", "available").eq("is_archived", false);
-    if (visibilityError) throw visibilityError;
-    const visibleIds = new Set((visibleItems || []).map(item => item.id));
-    return response({ itemIds: itemIds.filter(id => visibleIds.has(id)) });
+    return response({ itemIds });
   } catch (error) {
     console.error("Product semantics failed", error);
     const message = error instanceof Error ? error.message : "Product semantics failed.";

@@ -20,7 +20,7 @@ const ITEMS = [
     key: "block",
     icon: Ban,
     label: "Block user",
-    desc: "They can't message you, and you won't see each other's items.",
+    desc: "They can't message you, and you won't see each other's posts.",
     destructive: true,
   },
 ];
@@ -65,7 +65,7 @@ export default function ChatHeaderMenu({ onDelete, onReport, onBlock, blockState
             const Icon = blockedByMe ? UserRoundCheck : item.icon;
             const label = blockedByMe ? "Unblock user" : blockedByThem ? "Blocked you" : item.label;
             const desc = blockedByMe
-              ? "Allow this person to message you and see your items again."
+              ? "Allow this person to message you and see your posts again."
               : blockedByThem
                 ? "This person has blocked you."
                 : item.desc;

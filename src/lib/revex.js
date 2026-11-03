@@ -18,8 +18,8 @@ export const CATEGORY_LABELS = {
   other: "Other",
 };
 
-export const PRODUCT_GENDERS = ["unisex", "men", "women"];
-export const PRODUCT_GENDER_LABELS = { unisex: "Unisex", men: "Men", women: "Women" };
+export const PRODUCT_GENDERS = ["men", "women", "unisex"];
+export const PRODUCT_GENDER_LABELS = { men: "Men", women: "Women", unisex: "Unisex" };
 
 export const PRODUCT_CATEGORIES = {
   coats: { label: "Coats & jackets", subcategories: ["Puffer", "Denim jacket", "Leather jacket", "Bomber", "Trench coat", "Blazer", "Windbreaker"] },
@@ -40,6 +40,15 @@ export const STYLE_TAGS = [
   "Y2K", "Streetwear", "Alternative", "Vintage", "Grunge", "Minimalist", "Gorpcore",
   "Old money", "Coquette", "Cottagecore", "Skater", "Workwear", "Darkwear", "Preppy",
 ];
+
+export const POST_CATEGORIES = [
+  "hauls", "try_on", "streetwear", "vintage", "y2k", "cottagecore", "luxury", "other",
+];
+
+export const POST_CATEGORY_LABELS = {
+  hauls: "Hauls", try_on: "Try-On", streetwear: "Streetwear", vintage: "Vintage",
+  y2k: "Y2K", cottagecore: "Cottagecore", luxury: "Luxury", other: "Other",
+};
 
 export function formatPrice(n) {
   if (n == null || isNaN(n)) return "—";

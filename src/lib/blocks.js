@@ -2,7 +2,7 @@ import { supabase, getCurrentUserProfile } from "@/api/supabaseClient";
 
 /**
  * Blocking is mutual invisibility. This returns the ids of everyone blocked in
- * either direction so their items can be hidden from feeds, search and profiles.
+ * either direction so their posts can be hidden from feeds, search and profiles.
  */
 export async function getBlockedIds(userId) {
   try {

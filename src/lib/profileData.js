@@ -15,26 +15,26 @@ export async function loadProfilesById(ids) {
   return Object.fromEntries((data || []).map((profile) => [profile.id, profile]));
 }
 
-export function profileLabel(profile, fallback = "Unknown") {
+export function profileLabel(profile, fallback = "Creator") {
   return profile?.display_name || profile?.full_name || fallback;
 }
 
-export async function enrichItemCreators(items) {
+export async function enrichPostCreators(posts) {
   try {
-    const profiles = await loadProfilesById(items.map((item) => item.created_by_id));
-    return items.map((item) => {
-      const profile = profiles[item.created_by_id];
-      const fallbackName = item.seller_name && !item.seller_name.includes("@")
-        ? item.seller_name
-        : "Unknown";
+    const profiles = await loadProfilesById(posts.map((post) => post.created_by_id));
+    return posts.map((post) => {
+      const profile = profiles[post.created_by_id];
+      const fallbackName = post.creator_name && !post.creator_name.includes("@")
+        ? post.creator_name
+        : "Creator";
       return {
-        ...item,
-        seller_name: profileLabel(profile, fallbackName),
-        seller_avatar: profile?.avatar || item.seller_avatar || "",
+        ...post,
+        creator_name: profileLabel(profile, fallbackName),
+        creator_avatar: profile?.avatar || post.creator_avatar || "",
       };
     });
   } catch (error) {
-    console.error("Could not load item creator profiles:", error);
-    return items;
+    console.error("Could not load post creator profiles:", error);
+    return posts;
   }
 }

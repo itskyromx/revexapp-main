@@ -9,9 +9,6 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "test:views": "node scripts/verify-item-views.mjs",
-    "test:saved": "node scripts/verify-saved-items.mjs",
-    "test:archive": "node scripts/verify-item-archive.mjs",
     "preview": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy"
   },

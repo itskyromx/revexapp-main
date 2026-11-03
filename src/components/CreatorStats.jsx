@@ -10,8 +10,8 @@ function StatCard({ icon: Icon, value, label, accent }) {
   );
 }
 
-export default function CreatorStats({ items }) {
-  const totals = items.reduce(
+export default function CreatorStats({ posts }) {
+  const totals = posts.reduce(
     (acc, p) => {
       acc.views += p.view_count || 0;
       acc.likes += p.like_count || 0;
@@ -21,15 +21,15 @@ export default function CreatorStats({ items }) {
     { views: 0, likes: 0, saves: 0 }
   );
 
-  const trending = [...items]
+  const trending = [...posts]
     .map((p) => ({
-      item: p,
+      post: p,
       score: (p.view_count || 0) + (p.like_count || 0) + (p.bookmark_count || 0),
     }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 
-  if (items.length === 0) return null;
+  if (posts.length === 0) return null;
 
   return (
     <div className="mt-4">
@@ -46,28 +46,28 @@ export default function CreatorStats({ items }) {
 
       {trending.length > 0 && (
         <div className="mt-3">
-          <h3 className="font-heading font-bold uppercase text-xs text-muted-foreground mb-2">Trending items</h3>
+          <h3 className="font-heading font-bold uppercase text-xs text-muted-foreground mb-2">Trending posts</h3>
           <div className="space-y-2">
-            {trending.map(({ item, score }, i) => (
-              <div key={item.id} className={`acid-card-sm p-2 flex items-center gap-3 ${i === 0 ? "bg-brand-red text-white border-white" : "bg-card"}`}>
+            {trending.map(({ post, score }, i) => (
+              <div key={post.id} className={`acid-card-sm p-2 flex items-center gap-3 ${i === 0 ? "bg-brand-red text-white border-white" : "bg-card"}`}>
                 <div className="w-12 h-12 shrink-0 border-2 border-border overflow-hidden bg-muted">
-                  {item.image_urls?.[0] ? (
-                    <img src={item.image_urls[0]} className="w-full h-full object-cover" alt="" />
+                  {post.image_urls?.[0] ? (
+                    <img src={post.image_urls[0]} className="w-full h-full object-cover" alt="" />
                   ) : (
                     <div className="w-full h-full grid-bg" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={`font-heading font-bold text-xs truncate ${i === 0 ? "text-white" : "text-foreground"}`}>{item.title}</p>
+                  <p className={`font-heading font-bold text-xs truncate ${i === 0 ? "text-white" : "text-foreground"}`}>{post.haul_title}</p>
                   <div className="flex items-center gap-3 mt-0.5">
                     <span className={`flex items-center gap-0.5 text-[10px] ${i === 0 ? "text-white/80" : "text-muted-foreground"}`}>
-                      <Eye className="w-3 h-3" /> {item.view_count || 0}
+                      <Eye className="w-3 h-3" /> {post.view_count || 0}
                     </span>
                     <span className={`flex items-center gap-0.5 text-[10px] ${i === 0 ? "text-white/80" : "text-muted-foreground"}`}>
-                      <Heart className="w-3 h-3" /> {item.like_count || 0}
+                      <Heart className="w-3 h-3" /> {post.like_count || 0}
                     </span>
                     <span className={`flex items-center gap-0.5 text-[10px] ${i === 0 ? "text-white/80" : "text-muted-foreground"}`}>
-                      <Bookmark className="w-3 h-3" /> {item.bookmark_count || 0}
+                      <Bookmark className="w-3 h-3" /> {post.bookmark_count || 0}
                     </span>
                   </div>
                 </div>

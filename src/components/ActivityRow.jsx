@@ -12,7 +12,7 @@ const ICONS = {
   like: Heart,
 };
 
-/** One line of activity: who did what, with the item it concerns. */
+/** One line of activity: who did what, with the item or post it concerns. */
 export default function ActivityRow({ notification, onOpen, onClear }) {
   const Icon = ICONS[notification.type] || MessageCircle;
   const unread = !notification.read;

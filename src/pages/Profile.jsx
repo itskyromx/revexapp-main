@@ -6,7 +6,6 @@ import { ArrowLeft, UserPlus, UserCheck, ShoppingBag, Settings as SettingsIcon, 
 import { getBlockedIds, hideBlocked, clearBlockRelationship, getBlockDirection, setBlockRelationship } from "@/lib/blocks";
 import { displayName } from "@/lib/revex";
 import Avatar from "@/components/Avatar";
-import ItemOwnerActions from "@/components/ItemOwnerActions";
 import ItemCard from "@/components/ItemCard";
 import SiteHeader from "@/components/SiteHeader";
 import BottomNav from "@/components/BottomNav";
@@ -18,6 +17,7 @@ import { toggleBookmark } from "@/lib/bookmarks";
 import FollowListSheet from "@/components/FollowListSheet";
 import ProfileWarningBanner from "@/components/ProfileWarningBanner";
 import SellerRatingSummary from "@/components/SellerRatingSummary";
+import ReportUserSheet from "@/components/ReportUserSheet";
 import { toast } from "@/components/ui/use-toast";
 
 export default function Profile() {
@@ -26,6 +26,7 @@ export default function Profile() {
   const { user: me, loading: userLoading } = useCurrentUser();
   const targetId = userId || me?.id;
   const [profile, setProfile] = useState(null);
+  const [creatorPosts, setCreatorPosts] = useState([]);
   const [items, setItems] = useState([]);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
@@ -52,13 +53,17 @@ export default function Profile() {
       try {
         const { data: u } = await supabase.from('profiles').select('*').eq('id', targetId).single();
         setProfile(u);
-        const [itsRes, flsRes, fingRes, blockDirection, blockedIds] = await Promise.all([
+        const [postsRes, itsRes, flsRes, fingRes, blockDirection, blockedIds] = await Promise.all([
+          me?.id === targetId
+            ? supabase.from('posts').select('id,view_count,like_count,bookmark_count,image_urls,haul_title').eq('created_by_id', targetId)
+            : Promise.resolve({ data: [] }),
           supabase.from('items').select('*').eq('created_by_id', targetId),
           supabase.from('follows').select('*').eq('followee_id', targetId),
           supabase.from('follows').select('*').eq('follower_id', targetId),
           me && me.id !== targetId ? getBlockDirection(me.id, targetId) : Promise.resolve(null),
           getBlockedIds(me?.id)
         ]);
+        setCreatorPosts(postsRes.data || []);
         const its = itsRes.data || [];
         const fls = flsRes.data || [];
         const fing = fingRes.data || [];
@@ -234,7 +239,7 @@ export default function Profile() {
       .map((row) => [row.follower_id, row.follower_name])
   );
 
-  const name = displayName(profile) || "Unknown";
+  const name = displayName(profile) || "Creator";
   const locked = Boolean(profile?.private_account) && !isSelf && !isFollowing;
 
   if (userLoading) return <div className="min-h-screen bg-background grid place-items-center"><div className="w-8 h-8 border-4 border-border border-t-transparent rounded-full animate-spin" /></div>;
@@ -313,7 +318,7 @@ export default function Profile() {
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  You blocked this person — they can't message you and you won't see each other's items.
+                  You blocked this person — they can't message you and you won't see each other's posts.
                 </p>
               </> :
             blockedByThem ?
@@ -374,22 +379,19 @@ export default function Profile() {
           <SellerRatingSummary userId={targetId} />
         ) : tab === "shop" ? (
           <>
-          {isSelf && <CreatorStats items={items} />}
+          {isSelf && <CreatorStats posts={creatorPosts} />}
           {items.length === 0 ? (
             <div className="acid-card p-6 mt-4 text-center text-sm text-muted-foreground">No items listed yet.</div>
           ) : (
             <div className="grid grid-cols-2 gap-2 mt-4">
               {items.map((it) => (
-                <ItemOwnerActions key={it.id} item={it}
-                  onChanged={updated => setItems(current => current.map(entry => entry.id === updated.id ? updated : entry))}
-                  onDeleted={() => setItems(current => current.filter(entry => entry.id !== it.id))}
-                  renderTrigger={open => <ItemCard
-                  onLongPress={open}
+                <ItemCard
+                  key={it.id}
                   item={it}
                   saved={isSaved("item", it.id)}
                   onToggleSave={() => toggleBookmark(me?.id, "item", it)}
                   onClick={() => navigate(`/item/${it.id}`)}
-                />} />
+                />
               ))}
             </div>
           )}

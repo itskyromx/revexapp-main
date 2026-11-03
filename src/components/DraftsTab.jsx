@@ -60,12 +60,12 @@ export default function DraftsTab() {
   if (drafts.length === 0) {
     return (
       <div className="acid-card p-6 mt-4 text-center">
-        <p className="font-heading font-bold uppercase text-sm">No unfinished items</p>
+        <p className="font-heading font-bold uppercase text-sm">No unfinished posts</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Start a item and it saves itself as you go.
+          Start a post and it saves itself as you go.
         </p>
         <button onClick={() => navigate("/upload")} className="acid-btn bg-brand-red text-white mt-4">
-          <Plus className="w-4 h-4" /> Start a item
+          <Plus className="w-4 h-4" /> Start a post
         </button>
       </div>
     );
@@ -89,7 +89,7 @@ export default function DraftsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display uppercase">Delete this draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pending?.title?.trim() ? `"${pending.title.trim()}"` : "This draft"} and
+              {pending?.haul_title?.trim() ? `"${pending.haul_title.trim()}"` : "This draft"} and
               everything in it — media, details and items — will be permanently deleted. This can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

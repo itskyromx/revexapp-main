@@ -1,7 +1,19 @@
+import { Client } from "pg";
+
 export default {
-  async fetch(request: Request, env: { ASSETS: { fetch(request: Request): Promise<Response> } }) {
-    // Serve the SPA for direct visits and authentication redirects as well as
-    // browsers whose navigation requests fall through to the Worker.
-    return env.ASSETS.fetch(request);
+  async fetch(request, env, ctx) {
+    // Hyperdrive provides a unique generated connection string to connect to
+    // your database via Hyperdrive that can be used with your existing tools
+    const client = new Client({ connectionString: env.HYPERDRIVE.connectionString });
+    await client.connect();
+
+    try {
+      // Sample SQL query
+      const result = await client.query("SELECT * FROM pg_tables");
+
+      return Response.json({result: result.rows});
+    } catch (e) {
+      return Response.json({ error: e instanceof Error ? e.message : e }, { status: 500 });
+    }
   },
 }
