@@ -1,6 +1,5 @@
-import { supabase, callFunction } from "@/api/supabaseClient";
+import { uploadPublicFile, callFunction } from "@/api/supabaseClient";
 import { captureFrames, dataUrlToFile } from "@/lib/videoFrames";
-import { createUniqueId } from "@/lib/uniqueId";
 import { hasCookieConsent } from "@/lib/cookieConsent";
 
 function requireAnalysisConsent() {
@@ -22,11 +21,8 @@ export async function detectItems(videoUrl) {
   for (let i = 0; i < frames.length; i++) {
     requireAnalysisConsent();
     const file = await dataUrlToFile(frames[i], `frame-${i}.jpg`);
-    const path = `item-frames/${createUniqueId()}-${file.name}`;
-    const { error } = await supabase.storage.from('media').upload(path, file);
-    if (error) throw error;
-    const { data: pub } = supabase.storage.from('media').getPublicUrl(path);
-    fileUrls.push(pub.publicUrl);
+    const { file_url } = await uploadPublicFile(file, 'item-frames');
+    fileUrls.push(file_url);
   }
 
   requireAnalysisConsent();

@@ -6,6 +6,7 @@ import Avatar from "@/components/Avatar";
 import { displayName } from "@/lib/revex";
 import { isUsernameAvailable, isValidUsername, normalizeUsername } from "@/lib/usernames";
 import { useI18n } from "@/lib/i18n";
+import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL } from "@/lib/imageUpload";
 
 export default function ProfileSection({ user, setUser }) {
   const { t } = useI18n();
@@ -75,12 +76,13 @@ export default function ProfileSection({ user, setUser }) {
           <Upload className="w-4 h-4" /> {t("Change photo")}
           <input
             type="file"
-            accept="image/*"
+            accept={IMAGE_ACCEPT}
             className="hidden"
             onChange={(e) => e.target.files && pickAvatar(e.target.files[0])}
           />
         </label>
       </div>
+      <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
 
       <div>
         <label htmlFor="profile-username" className="acid-label">{t("Username")}</label>

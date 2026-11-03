@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import { Loader2, Upload, X } from "lucide-react";
 import { PRODUCT_BRANDS, PRODUCT_CATEGORIES, PRODUCT_GENDERS, PRODUCT_GENDER_LABELS, STYLE_TAGS, normalizeTags } from "@/lib/revex";
 import { hasCookieConsent } from "@/lib/cookieConsent";
+import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL } from "@/lib/imageUpload";
 
 const blankProduct = () => ({
   title: "", brand: "", size: "", condition: "good", price: "", shipping_price: "",
@@ -174,8 +175,13 @@ export default function UploadPage() {
           <label className="acid-card-sm p-5 flex flex-col items-center justify-center gap-2 cursor-pointer border-dashed">
             {busy ? <Loader2 className="w-7 h-7 animate-spin" /> : <Upload className="w-7 h-7" />}
             <span className="font-heading font-bold uppercase text-sm">Choose photos</span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => uploadPhotos(event.target.files)} />
+            <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden" onChange={(event) => {
+              const files = Array.from(event.target.files || []);
+              event.target.value = '';
+              void uploadPhotos(files);
+            }} />
           </label>
+          <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
           {media.length > 0 && <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {media.map((entry, index) => <div key={`${entry.url}-${index}`} className="aspect-square border-2 border-border overflow-hidden relative">
               <img src={entry.url} className="w-full h-full object-cover" alt={`Product photo ${index + 1}`} />

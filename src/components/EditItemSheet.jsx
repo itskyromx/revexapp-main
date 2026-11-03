@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { supabase, uploadPublicFile } from "@/api/supabaseClient";
+import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL } from "@/lib/imageUpload";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import TagChips from "@/components/TagChips";
@@ -111,11 +112,12 @@ export default function EditItemSheet({ item, userId, onClose, onSaved }) {
           <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
             <div className="space-y-2">
               <label className="acid-label" htmlFor="edit-photos">Photos</label>
-              <input id="edit-photos" type="file" accept="image/*" multiple className="acid-input" onChange={(event) => {
+              <input id="edit-photos" type="file" accept={IMAGE_ACCEPT} multiple className="acid-input" onChange={(event) => {
                 const files = Array.from(event.target.files || []);
                 event.target.value = "";
                 void upload(files);
               }} />
+              <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
               <div className="grid grid-cols-3 gap-2">
                 {photos.map((url, index) => <div key={`${url}-${index}`} className="relative border-2 border-border">
                   <img src={url} alt={`Photo ${index + 1}`} className="aspect-square w-full object-cover" />

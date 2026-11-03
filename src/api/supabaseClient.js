@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createUniqueId } from '@/lib/uniqueId';
+import { validateImageUpload } from '@/lib/imageUpload';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -28,6 +29,7 @@ export async function callFunction(name, body) {
 }
 
 export async function uploadPublicFile(file, folder = "uploads") {
+  await validateImageUpload(file);
   const path = `${folder}/${createUniqueId()}-${file.name}`;
   const { error } = await supabase.storage.from('media').upload(path, file);
   if (error) throw error;
