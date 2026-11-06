@@ -5,7 +5,7 @@ export const COOKIE_CATEGORIES = [
   {
     key: "essential",
     title: "Essential",
-    description: "Required for sign-in, account security, consent records, site fonts and QR generation. The QR provider receives the drop-off code when its image is generated.",
+    description: "Required for sign-in, account security, photo safety checks, consent records, site fonts and QR generation. Uploaded photos are checked by OpenAI before publication. The QR provider receives the drop-off code when its image is generated.",
     required: true,
   },
   {
@@ -35,7 +35,7 @@ export const DATA_COLLECTION_AREAS = [
   },
   {
     title: "Content and media",
-    details: "Items, descriptions, tags, listing details and archive/visibility choices, photos, videos, avatars and files uploaded to the platform's media storage.",
+    details: "Items, descriptions, tags, listing details and archive/visibility choices, photos, videos, avatars and files uploaded to the platform's media storage. New photos are sent to OpenAI for mandatory safety checks before public storage, independently of optional personalization consent. Revex keeps the account ID, image fingerprint, policy version, decision and limited reason code for up to 30 days; rejected image files are not saved by Revex. Approved-file references remain while the media is stored.",
   },
   {
     title: "Platform activity",
@@ -83,8 +83,8 @@ export const THIRD_PARTY_SERVICES = [
   },
   {
     name: "OpenAI",
-    purpose: "Generates multilingual text embeddings for item search and recommendations. Item descriptions, search queries and selected style/brand preferences are sent for this processing; Revex stores only item vectors and metadata in its Supabase Vector Bucket. Optional item analysis sends selected video frames and their image URLs to suggest item details.",
-    when: "Only with personalization consent, when you publish an item, search, receive recommendations or explicitly request video analysis.",
+    purpose: "Checks new uploaded photos for explicit nudity, sexual content, graphic violence and hateful imagery as a required platform safety measure. Separately, generates multilingual text embeddings for item search and recommendations; descriptions, queries and selected preferences are processed for this and item vectors are stored in Supabase. Optional item analysis processes selected video frames to suggest item details.",
+    when: "Photo safety checks run when you upload a photo, regardless of optional cookie choices. Search, recommendations and optional video analysis run only with personalization consent.",
   },
   {
     name: "OpenStreetMap",

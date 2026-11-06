@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { validateImageUpload, MAX_IMAGE_BYTES } from '../src/lib/imageUpload.js';
+import { validateImageUpload, prepareImageUpload, MAX_IMAGE_BYTES } from '../src/lib/imageUpload.js';
 
 const file = { type: 'image/jpeg', size: MAX_IMAGE_BYTES };
 let decoded = 0, closed = 0;
@@ -33,4 +33,15 @@ assert.equal(revoked, 1);
 URL.createObjectURL = originalCreate;
 URL.revokeObjectURL = originalRevoke;
 delete globalThis.Image;
+globalThis.createImageBitmap = async () => ({ width: 800, height: 600, close() {} });
+globalThis.document = { createElement: () => ({
+  width: 0, height: 0,
+  getContext: () => ({ fillRect() {}, drawImage() {} }),
+  toBlob: callback => callback(new Blob([new Uint8Array(20)], { type: 'image/jpeg' })),
+}) };
+const converted = await prepareImageUpload(new File([new Uint8Array(20)], 'photo.avif', { type: 'image/avif' }));
+assert.equal(converted.type, 'image/jpeg');
+assert(converted.size <= MAX_IMAGE_BYTES);
+delete globalThis.document;
+delete globalThis.createImageBitmap;
 console.log('PASS: byte/dimension boundaries, supported types, corrupt files, bitmap release, browser fallback and object URL cleanup');

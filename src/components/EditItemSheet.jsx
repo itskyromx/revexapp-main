@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { supabase, uploadPublicFile } from "@/api/supabaseClient";
-import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL } from "@/lib/imageUpload";
+import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL, PHOTO_SAFETY_NOTICE } from "@/lib/imageUpload";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import TagChips from "@/components/TagChips";
@@ -118,6 +118,7 @@ export default function EditItemSheet({ item, userId, onClose, onSaved }) {
                 void upload(files);
               }} />
               <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
+              <p className="text-xs text-muted-foreground">{PHOTO_SAFETY_NOTICE} <a href="/privacy-policy" target="_blank" rel="noreferrer" className="underline">Privacy policy</a></p>
               <div className="grid grid-cols-3 gap-2">
                 {photos.map((url, index) => <div key={`${url}-${index}`} className="relative border-2 border-border">
                   <img src={url} alt={`Photo ${index + 1}`} className="aspect-square w-full object-cover" />

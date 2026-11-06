@@ -7,7 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import { Loader2, Upload, X } from "lucide-react";
 import { PRODUCT_BRANDS, PRODUCT_CATEGORIES, PRODUCT_GENDERS, PRODUCT_GENDER_LABELS, STYLE_TAGS, normalizeTags } from "@/lib/revex";
 import { hasCookieConsent } from "@/lib/cookieConsent";
-import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL } from "@/lib/imageUpload";
+import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL, PHOTO_SAFETY_NOTICE } from "@/lib/imageUpload";
 
 const blankProduct = () => ({
   title: "", brand: "", size: "", condition: "good", price: "", shipping_price: "",
@@ -182,6 +182,7 @@ export default function UploadPage() {
             }} />
           </label>
           <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
+          <p className="text-xs text-muted-foreground">{PHOTO_SAFETY_NOTICE} <a href="/privacy-policy" target="_blank" rel="noreferrer" className="underline">Privacy policy</a></p>
           {media.length > 0 && <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {media.map((entry, index) => <div key={`${entry.url}-${index}`} className="aspect-square border-2 border-border overflow-hidden relative">
               <img src={entry.url} className="w-full h-full object-cover" alt={`Product photo ${index + 1}`} />

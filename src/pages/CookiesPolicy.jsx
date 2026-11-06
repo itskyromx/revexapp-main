@@ -6,7 +6,7 @@ export default function CookiesPolicy() {
   return (
     <LegalDocument
       title="Cookies Policy"
-      updated="October 14, 2026"
+      updated="November 5, 2026"
       otherPath="/privacy-policy"
       otherLabel="Privacy Policy"
     >
@@ -39,6 +39,7 @@ export default function CookiesPolicy() {
       </LegalSection>
 
       <LegalSection title="2. Choices you can make">
+        <p>Photo safety checks are required when uploading a new photo. The image is sent to OpenAI before it enters public storage. This security processing runs independently of optional personalization choices; rejecting optional cookies does not bypass moderation.</p>
         <p>On your first visit, the consent panel offers three choices:</p>
         <ul className="list-disc space-y-2 pl-6">
           <li><strong>Accept all:</strong> enables preferences, analytics and semantic search/recommendations, in addition to essential storage and services. Payment processing only starts when you choose to pay or manage a saved card.</li>

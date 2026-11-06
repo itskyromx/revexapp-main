@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { createUniqueId } from '@/lib/uniqueId';
-import { validateImageUpload } from '@/lib/imageUpload';
+import { prepareImageUpload, PHOTO_POLICY_VERSION } from '@/lib/imageUpload';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -29,10 +28,20 @@ export async function callFunction(name, body) {
 }
 
 export async function uploadPublicFile(file, folder = "uploads") {
-  await validateImageUpload(file);
-  const path = `${folder}/${createUniqueId()}-${file.name}`;
-  const { error } = await supabase.storage.from('media').upload(path, file);
-  if (error) throw error;
-  const { data } = supabase.storage.from('media').getPublicUrl(path);
-  return { file_url: data.publicUrl };
+  const preparedFile = await prepareImageUpload(file);
+  const body = new FormData();
+  body.append('file', preparedFile);
+  body.append('folder', folder);
+  body.append('policyVersion', PHOTO_POLICY_VERSION);
+  const { data, error } = await supabase.functions.invoke('moderateMedia', { body });
+  if (error) {
+    let message = 'The photo could not be checked. Please try again.';
+    if (error.context instanceof Response) {
+      const details = await error.context.clone().json().catch(() => null);
+      if (typeof details?.error === 'string') message = details.error;
+    }
+    throw new Error(message);
+  }
+  if (!data?.file_url) throw new Error('The photo could not be approved. Please try again.');
+  return { file_url: data.file_url };
 }

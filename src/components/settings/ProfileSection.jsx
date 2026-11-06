@@ -6,7 +6,7 @@ import Avatar from "@/components/Avatar";
 import { displayName } from "@/lib/revex";
 import { isUsernameAvailable, isValidUsername, normalizeUsername } from "@/lib/usernames";
 import { useI18n } from "@/lib/i18n";
-import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL } from "@/lib/imageUpload";
+import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL, PHOTO_SAFETY_NOTICE } from "@/lib/imageUpload";
 
 export default function ProfileSection({ user, setUser }) {
   const { t } = useI18n();
@@ -83,6 +83,7 @@ export default function ProfileSection({ user, setUser }) {
         </label>
       </div>
       <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
+      <p className="text-xs text-muted-foreground">{PHOTO_SAFETY_NOTICE} <a href="/privacy-policy" target="_blank" rel="noreferrer" className="underline">Privacy policy</a></p>
 
       <div>
         <label htmlFor="profile-username" className="acid-label">{t("Username")}</label>

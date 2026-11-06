@@ -4,7 +4,7 @@ export default function PrivacyPolicy() {
   return (
     <LegalDocument
       title="Privacy Policy"
-      updated="October 13, 2026"
+      updated="November 5, 2026"
       otherPath="/terms-and-conditions"
       otherLabel="Terms and Conditions"
     >
@@ -42,6 +42,7 @@ export default function PrivacyPolicy() {
         </p>
       </LegalSection>
       <LegalSection title="3. What other users can see">
+        <p>Before a new photo is published, Revex sends its image content to OpenAI for automated safety checks. Ordinary underwear and swimwear photography is allowed; explicit nudity, sexual content, graphic violence and hateful imagery are blocked. This safety processing is required for photo uploads and does not depend on optional personalization consent. Automated decisions can be wrong: choose another photo or use the contact options below to ask about an incorrect block. Rejected files are not saved by Revex. Limited decision records are kept for up to 30 days, and approved-file references remain while the media is stored. OpenAI also processes the request under its applicable API data policies.</p>
         <p>
           Your username and information you place on a public profile, item, or listing can be seen
           by other users. Public media may be delivered through publicly accessible media links.
