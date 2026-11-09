@@ -8,13 +8,14 @@ export function createModeratedUploadHandler(deps: any) {
     if (req.method==='OPTIONS') return new Response('ok',{headers:corsHeaders});
     if (req.method!=='POST') return reply({error:'Method not allowed'},405);
     let admin: any, checkId: string | null=null, uploadedPath: string | null=null;
+    let stage='authentication';
     try {
       const project=env('SUPABASE_URL');
       const client=createClient(project,env('SUPABASE_ANON_KEY'),{global:{headers:{Authorization:req.headers.get('Authorization')||''}}});
       const {data:{user},error:authError}=await client.auth.getUser();
       if (authError || !user) return reply({error:'Please sign in to upload a photo.'},401);
       const key=env('OPENAI_API_KEY');
-      if (!key) return reply({code:'moderation_unavailable',error:'Photo safety checks are temporarily unavailable. Please try again later.'},503);
+      if (!key) return reply({code:'moderation_unavailable',error:'Photo safety checks are not configured. Add OPENAI_API_KEY to this Supabase project’s Edge Function secrets.'},503);
       if (Number(req.headers.get('content-length'))>MAX_BYTES+65536) return reply({error:'Each image must be no larger than 5 MB.'},413);
       // Bound the actual request too: content-length is not trusted.
       const reader=req.body?.getReader();
@@ -59,14 +60,16 @@ export function createModeratedUploadHandler(deps: any) {
           method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
           body:JSON.stringify(body),signal:AbortSignal.timeout(25000),
         });
-        if(!response.ok) throw new Error(`Photo reviewer unavailable (${response.status})`);
+        if(!response.ok) throw new Error(`openai_${endpoint.replace('/','_')}_${response.status}`);
         return response.json();
       };
+      stage='openai_moderation';
       const screening=moderationResult(await openai('moderations',{
         model:'omni-moderation-latest',input:[{type:'image_url',image_url:{url:dataUrl}}],
       }));
       let reason=screening.reason;
       if (!screening.blocked) {
+        stage='openai_fashion_review';
         reason=visionResult(await openai('chat/completions',{
           model:'gpt-4.1-mini-2025-04-14',store:false,temperature:0,max_completion_tokens:150,
           messages:[{role:'system',content:FASHION_POLICY},{role:'user',content:[
@@ -84,16 +87,25 @@ export function createModeratedUploadHandler(deps: any) {
         return reply({code:'photo_rejected',error:rejectionMessage(reason)},422);
       }
       const path=`${folder}/${user.id}/${crypto.randomUUID()}.${MIME_EXT[file.type]}`;
+      stage='storage_upload';
       const {error:uploadError}=await admin.storage.from('media').upload(path,bytes,{contentType:file.type,upsert:false,cacheControl:'3600'});
       if (uploadError) throw new Error('Photo storage unavailable');
       uploadedPath=path;
+      stage='save_moderation_result';
       await rpc('finish_media_moderation',{p_id:checkId,p_status:'approved',p_path:path});
       checkId=null; uploadedPath=null;
       return reply({file_url:admin.storage.from('media').getPublicUrl(path).data.publicUrl});
-    } catch {
+    } catch (error) {
       // Never log image bytes, data URLs, credentials or raw model responses.
-      if (uploadedPath && admin) await admin.storage.from('media').remove([uploadedPath]).catch(()=>{});
-      if (checkId && admin) await admin.rpc('finish_media_moderation',{p_id:checkId,p_status:'error',p_reason:'service_failure'}).catch(()=>{});
+      const failure = error instanceof Error && /^openai_(?:moderations|chat_completions)_\d{3}$/.test(error.message)
+        ? error.message : stage;
+      console.error('moderateMedia failed', { failure });
+      if (uploadedPath && admin) {
+        try { await admin.storage.from('media').remove([uploadedPath]); } catch { /* best-effort cleanup */ }
+      }
+      if (checkId && admin) {
+        try { await admin.rpc('finish_media_moderation',{p_id:checkId,p_status:'error',p_reason:'service_failure'}); } catch { /* best-effort cleanup */ }
+      }
       return reply({code:'moderation_unavailable',error:'The photo could not be safely checked or saved. Please try again.'},503);
     }
   };

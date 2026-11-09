@@ -47,8 +47,11 @@ export default function DeleteItemDialog({ item, onClose, onDeleted }) {
           </Dialog.Description>
         </div>
         {error && <p role="alert" className="text-sm text-brand-red">{error}</p>}
-        <div className="flex justify-center">
-          <button onClick={deleteItem} disabled={busy} className="acid-btn bg-brand-red text-white disabled:opacity-60">
+        <div className="flex justify-center gap-2">
+          <Dialog.Close asChild>
+            <button type="button" disabled={busy} className="acid-btn flex-1 bg-muted disabled:opacity-60">Cancel</button>
+          </Dialog.Close>
+          <button onClick={deleteItem} disabled={busy} className="acid-btn flex-1 bg-brand-red text-white disabled:opacity-60">
             {busy ? "Deleting…" : "Delete item"}
           </button>
         </div>

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
 import { supabase, uploadPublicFile } from "@/api/supabaseClient";
 import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL, PHOTO_SAFETY_NOTICE } from "@/lib/imageUpload";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -7,7 +7,7 @@ import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import TagChips from "@/components/TagChips";
 import { CONDITION_LABELS, PRODUCT_BRANDS, PRODUCT_CATEGORIES, PRODUCT_GENDERS, PRODUCT_GENDER_LABELS, normalizeTags } from "@/lib/revex";
 
-export default function EditItemSheet({ item, userId, onClose, onSaved }) {
+export default function EditItemSheet({ item, userId, onClose, onSaved, onDelete }) {
   const [draft, setDraft] = useState(() => ({
     title: item.title || "", description: item.description || "", brand: item.brand || "",
     size: item.size || "", condition: item.condition || "good", price: String(item.price ?? ""),
@@ -155,6 +155,10 @@ export default function EditItemSheet({ item, userId, onClose, onSaved }) {
           </div>
         </form>
         <div className="mt-5 border-t-2 border-border pt-4">
+          {onDelete && <button type="button" disabled={busy} onClick={onDelete}
+            className="acid-btn mb-2 w-full bg-brand-red text-white disabled:opacity-50">
+            <Trash2 className="w-4 h-4" /> Delete item
+          </button>}
           <button type="button" disabled={busy}
             onClick={() => { setError(""); if (item.is_archived) void changeArchive(); else setConfirmArchive(true); }}
             className="acid-btn w-full bg-muted text-foreground disabled:opacity-50">

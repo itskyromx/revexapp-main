@@ -182,7 +182,6 @@ export default function UploadPage() {
             }} />
           </label>
           <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
-          <p className="text-xs text-muted-foreground">{PHOTO_SAFETY_NOTICE} <a href="/privacy-policy" target="_blank" rel="noreferrer" className="underline">Privacy policy</a></p>
           {media.length > 0 && <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {media.map((entry, index) => <div key={`${entry.url}-${index}`} className="aspect-square border-2 border-border overflow-hidden relative">
               <img src={entry.url} className="w-full h-full object-cover" alt={`Product photo ${index + 1}`} />

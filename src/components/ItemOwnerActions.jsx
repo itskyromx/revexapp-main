@@ -10,6 +10,7 @@ import DeleteItemDialog from "@/components/DeleteItemDialog";
 export default function ItemOwnerActions({ item, onChanged = undefined, onDeleted = undefined, renderTrigger = undefined }) {
   const { user } = useAuth();
   const [action, setAction] = useState(null);
+  const [deleteFromEdit, setDeleteFromEdit] = useState(false);
   const isOwner = Boolean(user && item.created_by_id === user.id);
   const close = () => setAction(null);
   const open = () => { if (isOwner) setAction("menu"); };
@@ -23,6 +24,7 @@ export default function ItemOwnerActions({ item, onChanged = undefined, onDelete
       <ItemOwnerMenu open={action === "menu"} onClose={close} canBoost={!item.is_archived}
         onEdit={() => setAction("edit")} onBoost={() => setAction("boost")} onDelete={() => setAction("delete")} />
       {action === "edit" && <EditItemSheet item={item} userId={user.id} onClose={close}
+        onDelete={() => setDeleteFromEdit(true)}
         onSaved={(updated) => {
           close();
           toast({ title: Boolean(updated.is_archived) !== Boolean(item.is_archived)
@@ -30,8 +32,9 @@ export default function ItemOwnerActions({ item, onChanged = undefined, onDelete
           onChanged?.(updated);
         }} />}
       {action === "boost" && <BoostSheet item={item} onClose={close} />}
-      {action === "delete" && <DeleteItemDialog item={item} onClose={close}
-        onDeleted={() => { close(); onDeleted?.(); }} />}
+      {(action === "delete" || deleteFromEdit) && <DeleteItemDialog item={item}
+        onClose={() => { setAction(current => current === "delete" ? null : current); setDeleteFromEdit(false); }}
+        onDeleted={() => { close(); setDeleteFromEdit(false); onDeleted?.(); }} />}
     </>}
   </>;
 }

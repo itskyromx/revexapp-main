@@ -7,6 +7,7 @@ import Avatar from "@/components/Avatar";
 import OfferSheet from "@/components/OfferSheet";
 import CheckoutSheet from "@/components/CheckoutSheet";
 import EditItemSheet from "@/components/EditItemSheet";
+import DeleteItemDialog from "@/components/DeleteItemDialog";
 import { formatPrice, CONDITION_LABELS } from "@/lib/revex";
 import { useSaved } from "@/hooks/useSaved";
 import BottomNav from "@/components/BottomNav";
@@ -27,6 +28,7 @@ export default function ItemDetail() {
   const [counterFor, setCounterFor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [cancelNotice, setCancelNotice] = useState("");
   const [blockedRelationship, setBlockedRelationship] = useState(false);
   const [recommendedItems, setRecommendedItems] = useState([]);
@@ -341,11 +343,13 @@ export default function ItemDetail() {
       </div>
 
       {editing && isOwner && <EditItemSheet key={item.id} item={item} userId={user.id}
-        onClose={() => setEditing(false)} onSaved={(updatedItem) => {
+        onClose={() => setEditing(false)} onDelete={() => setDeleting(true)} onSaved={(updatedItem) => {
           setItem(updatedItem);
           setImageIndex(0);
           setEditing(false);
         }} />}
+      {deleting && isOwner && <DeleteItemDialog item={item} onClose={() => setDeleting(false)}
+        onDeleted={() => { setDeleting(false); setEditing(false); toast({ title: "Item deleted" }); navigate("/"); }} />}
       {showOffer && <OfferSheet item={item} onClose={() => setShowOffer(false)} onSubmitted={submitOffer} />}
       {counterFor && (
         <OfferSheet
