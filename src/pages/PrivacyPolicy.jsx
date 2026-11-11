@@ -32,7 +32,6 @@ export default function PrivacyPolicy() {
           <li>send service notifications, account notices, and requested updates;</li>
           <li>respond to reports, enforce our rules, prevent fraud and abuse, and protect users;</li>
           <li>maintain, troubleshoot, and improve the Service; and</li>
-          <li>match articles to semantic searches and recommend products using your selected styles and brands;</li>
           <li>meet legal obligations and resolve disputes.</li>
         </ul>
         <p>
@@ -42,7 +41,7 @@ export default function PrivacyPolicy() {
         </p>
       </LegalSection>
       <LegalSection title="3. What other users can see">
-        <p>Before a new photo is published, Revex sends its image content to OpenAI for automated safety checks. Ordinary underwear and swimwear photography is allowed; explicit nudity, sexual content, graphic violence and hateful imagery are blocked. This safety processing is required for photo uploads and does not depend on optional personalization consent. Automated decisions can be wrong: choose another photo or use the contact options below to ask about an incorrect block. Rejected files are not saved by Revex. Limited decision records are kept for up to 30 days, and approved-file references remain while the media is stored. OpenAI also processes the request under its applicable API data policies.</p>
+        <p>Before a new photo is published, Revex scans its image content for safety checks. We check for potentially sexual content, graphic violence and self-harm; its image checks do not cover every prohibited category, including text-only hate categories or sexual content involving minors. Ordinary clothing, underwear and swimwear product photos are welcome, though automated decisions can be wrong. This safety processing is required for photo uploads and does not depend on optional personalization consent. Rejected files are not saved by Revex. Limited decision records are kept for up to 30 days, and approved-file references remain while the media is stored.</p>
         <p>
           Your username and information you place on a public profile, item, or listing can be seen
           by other users. Public media may be delivered through publicly accessible media links.
@@ -124,7 +123,7 @@ export default function PrivacyPolicy() {
         <p>
           When you publish an article, search for products, or receive personalized recommendations,
           Revex sends the article description, search query, or selected style and brand preferences to
-          OpenAI to generate multilingual text embeddings. Product vectors and limited product metadata
+          Cloudflare Workers AI's BGE-M3 model to generate multilingual text embeddings. Product vectors and limited product metadata
           are stored in Revex's Supabase Vector Bucket. The preference vector is generated for the
           request and is not stored. See the Cookies Policy for the current third-party service inventory.
         </p>

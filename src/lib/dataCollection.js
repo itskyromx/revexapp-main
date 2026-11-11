@@ -5,7 +5,7 @@ export const COOKIE_CATEGORIES = [
   {
     key: "essential",
     title: "Essential",
-    description: "Required for sign-in, account security, photo safety checks, consent records, site fonts and QR generation. Uploaded photos are checked by OpenAI before publication. The QR provider receives the drop-off code when its image is generated.",
+    description: "Required for sign-in, account security, photo safety checks, consent records, site fonts and QR generation. Uploaded photos are checked before publication. The QR provider receives the drop-off code when its image is generated.",
     required: true,
   },
   {
@@ -23,7 +23,7 @@ export const COOKIE_CATEGORIES = [
   {
     key: "personalization",
     title: "Search, recommendations and item analysis",
-    description: "Allows item descriptions, searches and selected style/brand preferences to be processed by OpenAI for search and recommendations, and selected video frames for optional item analysis.",
+    description: "Allows item descriptions, searches and selected style/brand preferences to be processed by Cloudflare Workers AI for semantic search and recommendations, and selected video frames by OpenAI for optional item analysis.",
     required: false,
   },
 ];
@@ -43,7 +43,7 @@ export const DATA_COLLECTION_AREAS = [
   },
   {
     title: "Semantic search and recommendations",
-    details: "With personalization consent, item search queries, public descriptions and selected style and brand preferences are sent to OpenAI for multilingual embeddings. Optional video analysis sends selected frames and their image URLs to suggest item details. Revex stores item vectors and limited metadata in Supabase Vector Buckets; personal preference vectors are generated per request and are not stored.",
+    details: "With personalization consent, item search queries, public descriptions and selected style and brand preferences are sent to Cloudflare Workers AI's BGE-M3 model for multilingual embeddings. Optional video analysis sends selected frames and their image URLs to OpenAI to suggest item details. Revex stores item vectors and limited metadata in Supabase Vector Buckets; personal preference vectors are generated per request and are not stored.",
   },
   {
     title: "Marketplace and support",
@@ -63,8 +63,8 @@ export const THIRD_PARTY_SERVICES = [
   },
   {
     name: "Cloudflare",
-    purpose: "Website delivery, network security and operational observability.",
-    when: "When your browser connects to Revex.",
+    purpose: "Website delivery, network security, operational observability and BGE-M3 embedding inference through Workers AI.",
+    when: "When your browser connects to Revex, and when you use semantic search, recommendations or publish an item while personalization is enabled.",
   },
   {
     name: "Google",
@@ -83,8 +83,8 @@ export const THIRD_PARTY_SERVICES = [
   },
   {
     name: "OpenAI",
-    purpose: "Checks new uploaded photos for explicit nudity, sexual content, graphic violence and hateful imagery as a required platform safety measure. Separately, generates multilingual text embeddings for item search and recommendations; descriptions, queries and selected preferences are processed for this and item vectors are stored in Supabase. Optional item analysis processes selected video frames to suggest item details.",
-    when: "Photo safety checks run when you upload a photo, regardless of optional cookie choices. Search, recommendations and optional video analysis run only with personalization consent.",
+    purpose: "Checks new uploaded photos for potentially sexual content, graphic violence and self-harm imagery as a required platform safety measure. Optional item analysis processes selected video frames to suggest item details.",
+    when: "Photo safety checks run when you upload a photo, regardless of optional cookie choices. Optional video analysis runs only with personalization consent.",
   },
   {
     name: "OpenStreetMap",

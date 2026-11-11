@@ -54,7 +54,7 @@ export default function CookieConsent() {
           <div className="max-w-2xl">
             <p className="font-display text-lg uppercase">Your data and cookie choices</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Essential services include sign-in, security, the site fonts and QR generation. The QR provider receives the drop-off code when its image is generated. Optional preferences save your theme, sidebar and feed position. Semantic search and recommendations are optional and send product descriptions, searches and selected style/brand preferences to OpenAI.
+              Essential services include sign-in, security, the site fonts and QR generation. The QR provider receives the drop-off code when its image is generated. Optional preferences save your theme, sidebar and feed position. Semantic search and recommendations are optional and send product descriptions, searches and selected style/brand preferences to Cloudflare Workers AI.
             </p>
             <Link to="/cookies-policy" className="mt-2 inline-block text-xs font-bold text-primary underline underline-offset-4">
               Read the Cookies Policy and data collection details

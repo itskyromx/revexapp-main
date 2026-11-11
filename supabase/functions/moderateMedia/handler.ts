@@ -1,4 +1,4 @@
-import { FASHION_POLICY, POLICY_VERSION, MAX_BYTES, MIME_EXT, REASONS, moderationResult, visionResult, rejectionMessage, hasAnimation } from './policy.ts';
+import { POLICY_VERSION, LEGACY_CLIENT_POLICY_VERSION, MAX_BYTES, MIME_EXT, moderationResult, rejectionMessage, hasAnimation } from './policy.ts';
 
 // Dependencies are injected so auth, provider failures and upload ordering can be tested.
 export function createModeratedUploadHandler(deps: any) {
@@ -32,7 +32,8 @@ export function createModeratedUploadHandler(deps: any) {
       if (!(file instanceof File) || !Object.hasOwn(MIME_EXT,file.type) || !file.size || file.size>MAX_BYTES || typeof folder!=='string' || !['items','avatars','item-frames','uploads'].includes(folder)) {
         return reply({error:'Choose a JPEG, PNG or WebP image up to 5 MB. AVIF photos must be converted before upload.'},400);
       }
-      if (form.get('policyVersion')!==POLICY_VERSION) return reply({error:'Refresh the page to review the updated photo rules.'},409);
+      const clientPolicyVersion=form.get('policyVersion');
+      if (clientPolicyVersion!==POLICY_VERSION && clientPolicyVersion!==LEGACY_CLIENT_POLICY_VERSION) return reply({error:'Refresh the page to review the updated photo rules.'},409);
       const bytes=new Uint8Array(await file.arrayBuffer());
       let dimensions;
       try { dimensions=imageSize(bytes); } catch { return reply({error:'This file is not a readable image.'},400); }
@@ -60,27 +61,20 @@ export function createModeratedUploadHandler(deps: any) {
           method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
           body:JSON.stringify(body),signal:AbortSignal.timeout(25000),
         });
-        if(!response.ok) throw new Error(`openai_${endpoint.replace('/','_')}_${response.status}`);
+        if(!response.ok) {
+          const details=await response.clone().json().catch(()=>null);
+          const providerCode=details?.error?.code;
+          const providerType=details?.error?.type;
+          const safeDetail=[providerCode,providerType].find(value=>typeof value==='string' && /^[a-z0-9_]{1,48}$/.test(value));
+          throw new Error(`openai_${endpoint.replace('/','_')}_${response.status}${safeDetail?`_${safeDetail}`:''}`);
+        }
         return response.json();
       };
       stage='openai_moderation';
       const screening=moderationResult(await openai('moderations',{
         model:'omni-moderation-latest',input:[{type:'image_url',image_url:{url:dataUrl}}],
       }));
-      let reason=screening.reason;
-      if (!screening.blocked) {
-        stage='openai_fashion_review';
-        reason=visionResult(await openai('chat/completions',{
-          model:'gpt-4.1-mini-2025-04-14',store:false,temperature:0,max_completion_tokens:150,
-          messages:[{role:'system',content:FASHION_POLICY},{role:'user',content:[
-            {type:'text',text:'Classify this image under the Revex photo policy.'},
-            {type:'image_url',image_url:{url:dataUrl,detail:'high'}},
-          ]}],
-          response_format:{type:'json_schema',json_schema:{name:'revex_photo_safety',strict:true,schema:{
-            type:'object',properties:{reason:{type:'string',enum:REASONS}},required:['reason'],additionalProperties:false,
-          }}},
-        }));
-      }
+      const reason=screening.reason;
       if (reason!=='safe') {
         await rpc('finish_media_moderation',{p_id:checkId,p_status:reason==='uncertain'?'error':'rejected',p_reason:reason});
         checkId=null;
@@ -97,14 +91,21 @@ export function createModeratedUploadHandler(deps: any) {
       return reply({file_url:admin.storage.from('media').getPublicUrl(path).data.publicUrl});
     } catch (error) {
       // Never log image bytes, data URLs, credentials or raw model responses.
-      const failure = error instanceof Error && /^openai_(?:moderations|chat_completions)_\d{3}$/.test(error.message)
-        ? error.message : stage;
+      const failure = error instanceof Error && /^openai_moderations_\d{3}$/.test(error.message)
+        ? error.message : error instanceof Error && /^openai_moderations_\d{3}_[a-z0-9_]{1,48}$/.test(error.message)
+          ? error.message : stage;
       console.error('moderateMedia failed', { failure });
       if (uploadedPath && admin) {
         try { await admin.storage.from('media').remove([uploadedPath]); } catch { /* best-effort cleanup */ }
       }
       if (checkId && admin) {
         try { await admin.rpc('finish_media_moderation',{p_id:checkId,p_status:'error',p_reason:'service_failure'}); } catch { /* best-effort cleanup */ }
+      }
+      if (/^openai_moderations_429_(?:insufficient_quota|credit_balance_exhausted|billing_hard_limit_reached|project_spend_limit_reached|organization_spend_limit_reached)/.test(failure)) {
+        return reply({code:'moderation_billing_limit',error:'OpenAI API billing or usage limit reached. Check the API project’s credits and spending limits.'},503);
+      }
+      if (/^openai_moderations_429/.test(failure)) {
+        return reply({code:'moderation_rate_limited',error:'Photo reviews are temporarily disabled. Wait a minute, then try again.'},503);
       }
       return reply({code:'moderation_unavailable',error:'The photo could not be safely checked or saved. Please try again.'},503);
     }

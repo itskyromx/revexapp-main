@@ -50,7 +50,7 @@ export default function CookiesPolicy() {
           You can change your choice at any time using the control below. When you turn preferences off,
           Revex removes the optional browser keys it controls. Semantic search and recommendations stay
           off unless you enable that category; when enabled, product descriptions, search terms and
-          selected style/brand preferences are sent to OpenAI for embedding generation. If you explicitly use
+          selected style/brand preferences are sent to Cloudflare Workers AI for BGE-M3 embedding generation. If you explicitly use
           item video analysis, selected video frames and their image URLs are also sent to OpenAI to suggest
           item details, only with personalization consent. Your account records and actions already
           stored on the platform remain governed by the Privacy Policy and the feature you used.

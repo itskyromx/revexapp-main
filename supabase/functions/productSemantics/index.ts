@@ -2,9 +2,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const BUCKET_NAME = "revex-product-embeddings";
-const INDEX_NAME = "revex-products-openai-small";
-const EMBEDDING_MODEL = "text-embedding-3-small";
-const EMBEDDING_DIMENSION = 1536;
+const INDEX_NAME = "revex-products-bge-m3";
+const EMBEDDING_MODEL = "@cf/baai/bge-m3";
+const EMBEDDING_DIMENSION = 1024;
 
 function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -14,25 +14,45 @@ function response(body: unknown, status = 200) {
 }
 
 function productText(item: Record<string, unknown>) {
-  return [
-    item.title, item.brand, item.description, item.gender, item.category, item.subcategory,
+  const title = String(item.title || "none").replaceAll("|", " ").trim() || "none";
+  const content = [
+    item.brand, item.description, item.gender, item.category, item.subcategory,
     item.condition, item.size, ...(Array.isArray(item.styles) ? item.styles : []),
     ...(Array.isArray(item.tags) ? item.tags : []),
   ].filter(Boolean).join(" | ").slice(0, 6000);
+  return `title: ${title} | text: ${content}`;
 }
 
 async function embed(text: string) {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured for product semantics.");
-  const result = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: EMBEDDING_MODEL, input: text, dimensions: EMBEDDING_DIMENSION }),
-  });
+  const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID")?.trim();
+  const apiToken = Deno.env.get("CLOUDFLARE_AI_API_TOKEN")?.trim();
+  if (!accountId || !apiToken) {
+    throw new Error("Cloudflare Workers AI is not configured for product semantics.");
+  }
+
+  const result = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${EMBEDDING_MODEL}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text: [text] }),
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
   const payload = await result.json().catch(() => ({}));
-  if (!result.ok) throw new Error(payload?.error?.message || `Embedding service returned ${result.status}.`);
-  const vector = payload?.data?.[0]?.embedding;
-  if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIMENSION) throw new Error("Embedding service returned an invalid vector.");
+  if (!result.ok || payload?.success === false) {
+    const details = Array.isArray(payload?.errors)
+      ? payload.errors.map((entry: { code?: number; message?: string }) => [entry.code, entry.message].filter(Boolean).join(": ")).filter(Boolean).join("; ")
+      : "";
+    throw new Error(`Cloudflare Workers AI request failed (${result.status})${details ? `: ${details}` : "."}`);
+  }
+  const vector = payload?.result?.data?.[0];
+  if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIMENSION) {
+    throw new Error("Cloudflare Workers AI returned an invalid BGE-M3 vector.");
+  }
   return vector as number[];
 }
 
@@ -94,7 +114,9 @@ Deno.serve(async (req) => {
     const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const body = await req.json().catch(() => ({}));
     const mode = body.mode;
-    if (!Deno.env.get("OPENAI_API_KEY")) return response({ error: "OPENAI_API_KEY is not configured for product semantics." }, 503);
+    if (!Deno.env.get("CLOUDFLARE_ACCOUNT_ID") || !Deno.env.get("CLOUDFLARE_AI_API_TOKEN")) {
+      return response({ error: "Cloudflare Workers AI is not configured for product semantics." }, 503);
+    }
     const index = await getProductIndex(admin);
 
     if (mode === "upsert") {
@@ -160,7 +182,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Product semantics failed", error);
     const message = error instanceof Error ? error.message : "Product semantics failed.";
-    const status = message.includes("OPENAI_API_KEY") ? 503 : 500;
+    const status = message.includes("not configured for product semantics") ? 503
+      : message.includes("Cloudflare Workers AI") ? 502 : 500;
     return response({ error: message }, status);
   }
 });

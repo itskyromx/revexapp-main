@@ -2,8 +2,8 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_IMAGE_DIMENSION = 4096;
 export const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,image/avif';
 export const IMAGE_LIMITS_LABEL = 'JPEG, PNG, WebP or AVIF · Max 5 MB · Max 4096 × 4096 px per image';
-export const PHOTO_POLICY_VERSION = 'revex-fashion-2026-11-05-1';
-export const PHOTO_SAFETY_NOTICE = 'Photos are checked by OpenAI before upload. Ordinary underwear and swimwear photos are welcome; explicit nudity, sexual content, graphic violence and hateful imagery are blocked.';
+export const PHOTO_POLICY_VERSION = 'revex-omni-moderation-2026-11-09-1';
+export const PHOTO_SAFETY_NOTICE = 'Photos are checked before upload. Ordinary clothing, underwear and swimwear product photos are welcome. Explicit sexual content, graphic violence and self-harm imagery may be blocked.';
 
 export async function prepareImageUpload(file) {
   await validateImageUpload(file);
