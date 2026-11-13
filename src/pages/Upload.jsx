@@ -20,6 +20,7 @@ export default function UploadPage() {
   const { user } = useCurrentUser();
   const [busy, setBusy] = useState(false);
   const [media, setMedia] = useState([]);
+  const [previewImage, setPreviewImage] = useState(null);
   const [product, setProduct] = useState(blankProduct);
   const [customBrand, setCustomBrand] = useState("");
   const [customBrandSelected, setCustomBrandSelected] = useState(false);
@@ -28,6 +29,15 @@ export default function UploadPage() {
   const hydrated = useRef(false);
   const finished = useRef(false);
   const category = PRODUCT_CATEGORIES[product.category] || PRODUCT_CATEGORIES.shirts;
+
+  useEffect(() => {
+    if (!previewImage) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setPreviewImage(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [previewImage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -184,7 +194,9 @@ export default function UploadPage() {
           <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
           {media.length > 0 && <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {media.map((entry, index) => <div key={`${entry.url}-${index}`} className="aspect-square border-2 border-border overflow-hidden relative">
-              <img src={entry.url} className="w-full h-full object-cover" alt={`Product photo ${index + 1}`} />
+              <button type="button" onClick={() => setPreviewImage(entry)} aria-label={`View larger product photo ${index + 1}`} className="w-full h-full cursor-zoom-in">
+                <img src={entry.url} className="w-full h-full object-cover" alt={`Product photo ${index + 1}`} />
+              </button>
               <button type="button" aria-label="Remove photo" onClick={() => setMedia((current) => current.filter((_, i) => i !== index))} className="absolute top-1 right-1 sticker bg-brand-red text-white w-7 h-7 rounded-full"><X className="w-4 h-4" /></button>
             </div>)}
           </div>}
@@ -238,6 +250,14 @@ export default function UploadPage() {
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{busy ? "Publishing…" : "Publish item"}
         </button>
       </main>
+      {previewImage && <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setPreviewImage(null);
+      }}>
+        <div role="dialog" aria-modal="true" aria-label="Expanded product photo" className="relative max-w-5xl max-h-[90vh]">
+          <button type="button" autoFocus aria-label="Close image preview" onClick={() => setPreviewImage(null)} className="absolute -top-3 -right-3 z-10 sticker bg-brand-red text-white w-9 h-9 rounded-full flex items-center justify-center"><X className="w-5 h-5" /></button>
+          <img src={previewImage.url} alt="Expanded product photo" className="block max-w-full max-h-[90vh] object-contain" />
+        </div>
+      </div>}
       <BottomNav />
     </div>
   );

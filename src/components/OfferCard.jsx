@@ -6,6 +6,9 @@ import { formatPrice } from "@/lib/revex";
 export default function OfferCard({ offer, me, paid, busy, onRespond, onPay, onOpenItem }) {
   const isSeller = offer.seller_id === me?.id;
   const isBuyer = offer.buyer_id === me?.id;
+  const senderIsSeller = offer.initiator === "seller";
+  const isSender = senderIsSeller ? isSeller : isBuyer;
+  const isResponder = senderIsSeller ? isBuyer : isSeller;
   const status = paid && offer.status === "accepted" ? "paid" : offer.status;
   const statusClass =
     status === "pending"
@@ -25,7 +28,7 @@ export default function OfferCard({ offer, me, paid, busy, onRespond, onPay, onO
         <div className="min-w-0 flex-1">
           <p className="font-heading font-bold text-xs truncate">{offer.item_title}</p>
           <p className="text-[11px] text-muted-foreground truncate">
-            {isSeller ? `From ${offer.buyer_name || "buyer"}` : "Your offer"} · listed {formatPrice(offer.item_price)}
+            {isSender ? "Your offer" : senderIsSeller ? `From ${offer.seller_name || "seller"}` : `From ${offer.buyer_name || "buyer"}`} · listed {formatPrice(offer.item_price)}
           </p>
         </div>
         <span className={`acid-chip shrink-0 uppercase ${statusClass}`}>{status}</span>
@@ -39,7 +42,7 @@ export default function OfferCard({ offer, me, paid, busy, onRespond, onPay, onO
         )}
       </div>
 
-      {isSeller && offer.status === "pending" && (
+      {isResponder && offer.status === "pending" && (
         <div className="flex gap-2 mt-2">
           <button
             disabled={busy}

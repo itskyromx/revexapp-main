@@ -313,8 +313,19 @@ export default function Chat() {
   const respond = async (offer, status) => {
     setBusyOffer(offer.id);
     try {
-      await supabase.from('offers').update({ status }).eq('id', offer.id);
-      setOffers((arr) => arr.map((o) => (o.id === offer.id ? { ...o, status } : o)));
+      const { data: updatedOffer, error } = await supabase
+        .from('offers')
+        .update({ status })
+        .eq('id', offer.id)
+        .eq('status', 'pending')
+        .select('id, status')
+        .maybeSingle();
+      if (error) throw error;
+      if (!updatedOffer) {
+        toast({ title: "Offer already updated", description: "Refresh the chat to see its current status." });
+        return;
+      }
+      setOffers((arr) => arr.map((o) => (o.id === updatedOffer.id ? { ...o, status: updatedOffer.status } : o)));
       if (status === "accepted") {
         await supabase.from('items').update({ status: "reserved" }).eq('id', offer.item_id).then(() => {});
         supabase.functions.invoke("sendNotification", { body: {
@@ -330,8 +341,10 @@ export default function Chat() {
       }
     } catch (e) {
       console.error(e);
+      toast({ title: "Couldn't update offer", description: "Try again." });
+    } finally {
+      setBusyOffer("");
     }
-    setBusyOffer("");
   };
 
   const payOffer = async (offer) => {

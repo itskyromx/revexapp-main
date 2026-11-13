@@ -116,6 +116,26 @@ export default function ItemDetail() {
 
   const isOwner = user && item && user.id === item.created_by_id;
 
+  const declineEarlierOffers = async (newOffer) => {
+    const { error } = await supabase.from('offers').update({ status: 'rejected' })
+      .eq('item_id', newOffer.item_id)
+      .eq('seller_id', newOffer.seller_id)
+      .eq('buyer_id', newOffer.buyer_id)
+      .eq('status', 'pending')
+      .neq('id', newOffer.id);
+    if (error) {
+      const { error: rollbackError } = await supabase.from('offers').delete().eq('id', newOffer.id);
+      if (rollbackError) console.error('Could not roll back the new offer after superseding failed', rollbackError);
+      throw error;
+    }
+    setOffers((arr) => [
+      ...arr.map((offer) => offer.id !== newOffer.id && offer.item_id === newOffer.item_id
+        && offer.seller_id === newOffer.seller_id && offer.buyer_id === newOffer.buyer_id
+        && offer.status === 'pending' ? { ...offer, status: 'rejected' } : offer),
+      newOffer,
+    ]);
+  };
+
   const submitOffer = async ({ amount, message }) => {
     const { data: o, error } = await supabase.from('offers').insert({
       item_id: item.id,
@@ -130,7 +150,7 @@ export default function ItemDetail() {
       status: "pending"
     }).select().single();
     if (error) throw error;
-    setOffers((arr) => [...arr, o]);
+    await declineEarlierOffers(o);
     setShowOffer(false);
     navigate(`/chat/${item.created_by_id}?itemId=${item.id}`);
     supabase.functions.invoke('sendNotification', { body: {
@@ -169,7 +189,7 @@ export default function ItemDetail() {
       status: "pending"
     }).select().single();
     if (error) throw error;
-    setOffers((arr) => [...arr, o]);
+    await declineEarlierOffers(o);
     setCounterFor(null);
     supabase.functions.invoke('sendNotification', { body: {
       recipientId: counterFor.buyer_id,
@@ -275,12 +295,12 @@ export default function ItemDetail() {
                 {offers.map((o) => (
                   <div key={o.id} className="acid-card-sm bg-muted p-2 flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-heading font-bold text-sm truncate">{o.buyer_name}</p>
+                      <p className="font-heading font-bold text-sm truncate">{o.initiator === "seller" ? "Your counter-offer" : o.buyer_name}</p>
                       <p className="text-xs text-muted-foreground">Offered {formatPrice(o.amount)}</p>
                       {o.message && <p className="text-xs italic truncate">"{o.message}"</p>}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      {o.status === "pending" ? (
+                      {o.status === "pending" && o.initiator !== "seller" ? (
                         <div className="flex gap-1.5">
                           <button onClick={() => respond(o.id, "accepted")} className="acid-btn bg-brand-red text-white px-3 py-1 text-xs">Accept</button>
                           <button onClick={() => respond(o.id, "rejected")} className="acid-btn bg-card text-foreground px-3 py-1 text-xs">Decline</button>

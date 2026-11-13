@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Tag } from "lucide-react";
 import { formatPrice } from "@/lib/revex";
+import { toast } from "@/components/ui/use-toast";
 
 /** Sends an offer. Used by buyers bidding on an item and sellers countering one. */
 export default function OfferSheet({ item, title = "Make an Offer", recipient, defaultAmount, onClose, onSubmitted }) {
@@ -13,8 +14,14 @@ export default function OfferSheet({ item, title = "Make an Offer", recipient, d
   const submit = async () => {
     if (!amount || Number(amount) <= 0) return;
     setBusy(true);
-    await onSubmitted({ amount: Number(amount), message });
-    setBusy(false);
+    try {
+      await onSubmitted({ amount: Number(amount), message });
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Couldn't send offer", description: "Try again." });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

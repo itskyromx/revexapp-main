@@ -16,6 +16,7 @@ export default function EditItemSheet({ item, userId, onClose, onSaved, onDelete
     tags: item.tags || [], styles: item.styles || [], accepts_offers: Boolean(item.accepts_offers),
   }));
   const [photos, setPhotos] = useState(() => item.image_urls?.length ? [...item.image_urls] : item.image_url ? [item.image_url] : []);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -121,8 +122,10 @@ export default function EditItemSheet({ item, userId, onClose, onSaved, onDelete
               <p className="text-xs text-muted-foreground">{PHOTO_SAFETY_NOTICE} <a href="/privacy-policy" target="_blank" rel="noreferrer" className="underline">Privacy policy</a></p>
               <div className="grid grid-cols-3 gap-2">
                 {photos.map((url, index) => <div key={`${url}-${index}`} className="relative border-2 border-border">
-                  <img src={url} alt={`Photo ${index + 1}`} className="aspect-square w-full object-cover" />
-                  <button type="button" aria-label={`Remove photo ${index + 1}`} onClick={() => setPhotos((current) => current.filter((_, i) => i !== index))} className="absolute right-1 top-1 bg-brand-red text-white rounded-full p-1"><X className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => setPreviewPhoto(url)} aria-label={`View larger photo ${index + 1}`} className="block w-full cursor-zoom-in">
+                    <img src={url} alt={`Photo ${index + 1}`} className="aspect-square w-full object-cover" />
+                  </button>
+                  {index > 0 && <button type="button" aria-label={`Remove photo ${index + 1}`} onClick={() => setPhotos((current) => current.filter((_, i) => i !== index))} className="absolute right-1 top-1 sticker bg-brand-red text-white w-7 h-7 rounded-full flex items-center justify-center"><X className="w-4 h-4" /></button>}
                   <div className="flex justify-between bg-card">
                     <button type="button" aria-label={`Move photo ${index + 1} earlier`} disabled={index === 0} onClick={() => movePhoto(index, -1)} className="p-1 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
                     <span className="text-xs self-center">{index === 0 ? "Cover" : index + 1}</span>
@@ -167,6 +170,17 @@ export default function EditItemSheet({ item, userId, onClose, onSaved, onDelete
           </button>
         </div>
       </Dialog.Content>
+      <Dialog.Root open={Boolean(previewPhoto)} onOpenChange={(open) => { if (!open) setPreviewPhoto(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[70] bg-black/80" />
+          <Dialog.Content aria-label="Expanded product photo" className="fixed inset-0 z-[70] flex items-center justify-center p-4 outline-none">
+            <div className="relative max-h-[90vh] max-w-5xl">
+              <Dialog.Close aria-label="Close image preview" className="absolute -right-3 -top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-brand-red text-white"><X className="h-5 w-5" /></Dialog.Close>
+              {previewPhoto && <img src={previewPhoto} alt="Expanded product photo" className="block max-h-[90vh] max-w-full object-contain" />}
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
       </Dialog.Portal>
       <AlertDialog.Root open={confirmArchive} onOpenChange={open => { if (!locked.current) setConfirmArchive(open); }}>
         <AlertDialog.Portal>
