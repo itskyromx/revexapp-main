@@ -127,6 +127,11 @@ Deno.serve(async (req) => {
       const { data: item, error } = await client.from("items").select("*").eq("id", itemId).eq("is_archived", false).maybeSingle();
       if (error || !item) return response({ error: "Product not found." }, 404);
       const embedding = await embed(productText(item));
+      const styles = (
+        Array.isArray(item.styles) && item.styles.length
+          ? item.styles
+          : Array.isArray(item.tags) ? item.tags : []
+      ).map(String).filter(Boolean);
       const { error: storeError } = await index.putVectors({ vectors: [{
         key: item.id,
         data: { float32: embedding },
@@ -134,7 +139,7 @@ Deno.serve(async (req) => {
           item_id: item.id, owner_id: item.created_by_id, status: item.status,
           gender: item.gender || "unisex", category: item.category || "",
           subcategory: item.subcategory || "", brand: item.brand || "",
-          styles: item.styles || item.tags || [],
+          ...(styles.length ? { styles } : {}),
         },
       }] });
       if (storeError) throw storeError;
