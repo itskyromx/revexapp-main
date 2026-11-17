@@ -102,16 +102,16 @@ Deno.serve(async (req) => {
 
   try {
     const url = Deno.env.get("SUPABASE_URL");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const publish = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
+    const secret = Deno.env.get("SUPABASE_SECRET_KEYS");
     const authorization = req.headers.get("Authorization");
-    if (!url || !anonKey || !serviceKey || !authorization) return response({ error: "Sign in is required." }, 401);
+    if (!url || !publish || !secret || !authorization) return response({ error: "Sign in is required." }, 401);
 
-    const client = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
+    const client = createClient(url, publish, { global: { headers: { Authorization: authorization } } });
     const { data: { user }, error: authError } = await client.auth.getUser();
     if (authError || !user) return response({ error: "Sign in is required." }, 401);
 
-    const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
     const body = await req.json().catch(() => ({}));
     const mode = body.mode;
     if (!Deno.env.get("CLOUDFLARE_ACCOUNT_ID") || !Deno.env.get("CLOUDFLARE_AI_API_TOKEN")) {

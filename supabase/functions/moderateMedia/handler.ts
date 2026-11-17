@@ -11,7 +11,7 @@ export function createModeratedUploadHandler(deps: any) {
     let stage='authentication';
     try {
       const project=env('SUPABASE_URL');
-      const client=createClient(project,env('SUPABASE_ANON_KEY'),{global:{headers:{Authorization:req.headers.get('Authorization')||''}}});
+      const client=createClient(project,env('SUPABASE_PUBLISHABLE_KEYS'),{global:{headers:{Authorization:req.headers.get('Authorization')||''}}});
       const {data:{user},error:authError}=await client.auth.getUser();
       if (authError || !user) return reply({error:'Please sign in to upload a photo.'},401);
       const key=env('OPENAI_API_KEY');
@@ -41,7 +41,7 @@ export function createModeratedUploadHandler(deps: any) {
       if (actualType!==file.type || !dimensions.width || !dimensions.height || dimensions.width>4096 || dimensions.height>4096 || hasAnimation(bytes,file.type)) {
         return reply({error:'Choose a still image no larger than 4096 × 4096 pixels, with the correct file format.'},400);
       }
-      admin=createClient(project,env('SUPABASE_SERVICE_ROLE_KEY'));
+      admin=createClient(project,env('SUPABASE_SECRET_KEYS'));
       const rpc=async (name:string,args:any) => {
         const {data,error}=await admin.rpc(name,args); if(error) throw new Error('Moderation database unavailable'); return data;
       };

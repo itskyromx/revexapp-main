@@ -6,10 +6,10 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL'),
-      Deno.env.get('SUPABASE_ANON_KEY'),
+      Deno.env.get('SUPABASE_PUBLISHABLE_KEYS'),
       { global: { headers: { Authorization: req.headers.get('Authorization') } } }
     );
-    const admin = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    const admin = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SECRET_KEYS'));
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: 'Not signed in.' }), { status: 401, headers: corsHeaders });

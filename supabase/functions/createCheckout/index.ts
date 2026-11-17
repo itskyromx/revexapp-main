@@ -24,12 +24,12 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return reply({ error: 'Method not allowed.' }, 405);
   try {
     const url = Deno.env.get('SUPABASE_URL')!;
-    const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anon = Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!;
+    const secret = Deno.env.get('SUPABASE_SECRET_KEYS')!;
     const authorization = req.headers.get('Authorization');
     if (!authorization || !Deno.env.get('STRIPE_SECRET_KEY')) return reply({ error: 'Stripe checkout is not configured.' }, 503);
     const supabase = createClient(url, anon, { global: { headers: { Authorization: authorization } } });
-    const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+    const admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return reply({ error: 'Unauthorized.' }, 401);
 

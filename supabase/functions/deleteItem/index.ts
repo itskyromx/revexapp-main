@@ -3,7 +3,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 export async function handleDeleteItem(req: Request) {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+  const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!, {
     global: { headers: { Authorization: req.headers.get('Authorization') || '' } },
   });
   const { data: { user } } = await client.auth.getUser();

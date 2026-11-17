@@ -227,7 +227,6 @@ export default function CheckoutSheet({ item, offer, onClose }) {
               })}
             </div>}
           </div>
-          <p className="mt-1 text-[10px] text-muted-foreground">Apple Pay availability is confirmed by Stripe Checkout for your device and browser. MB WAY supports payment totals from €0.50 to €5,000.</p>
         </section>
 
         <section className="mt-4">
@@ -239,7 +238,6 @@ export default function CheckoutSheet({ item, offer, onClose }) {
                 <span className="shrink-0 text-right font-heading text-xs font-bold">Price after<br />connection</span>
               </button>)}
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">Test checkout: no carrier rate is configured, so shipping is set to €0. Configure shipping rates before accepting real orders.</p>
           </> : <div className="mt-1 space-y-2">
             {deliveryOptions.map((shippingOption) => <button key={shippingOption.id} type="button" aria-pressed={optionId === shippingOption.id} onClick={() => setOptionId(shippingOption.id)} className={`acid-card-sm flex w-full items-center justify-between gap-2 p-2.5 text-left ${optionId === shippingOption.id ? "bg-brand-red text-white" : "bg-card text-foreground"}`}>
               <span className="min-w-0"><span className="block truncate font-heading text-sm font-bold">{shippingOption.name}</span><span className={`text-[11px] ${optionId === shippingOption.id ? "text-white/80" : "text-muted-foreground"}`}>{shippingOption.carrier ? `${shippingOption.carrier} · ` : ""}{shippingOption.eta_days || "2–4 days"}</span></span>
