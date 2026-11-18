@@ -6,7 +6,7 @@ export default function CookiesPolicy() {
   return (
     <LegalDocument
       title="Cookies Policy"
-      updated="November 5, 2026"
+      updated="November 16, 2026"
       otherPath="/privacy-policy"
       otherLabel="Privacy Policy"
     >
@@ -24,7 +24,7 @@ export default function CookiesPolicy() {
           <code> revex-cookie-consent</code>, with the policy version and time of your choice.
         </p>
         <ul className="list-disc space-y-2 pl-6">
-          <li><strong>Essential:</strong> Supabase Auth stores the sign-in session in browser storage; the consent record remembers your selection. These are always on because account access and security depend on them.</li>
+          <li><strong>Essential:</strong> Supabase Auth stores the sign-in session in browser storage; Resend delivers signup confirmation codes to the email address you provide. The consent record remembers your selection. These are always on because account access and security depend on them.</li>
           <li><strong>Preferences:</strong> if enabled, Revex can store the theme, selected language, sidebar state, feed position and small local caches for likes, bookmarks and viewed items. Without this choice, device language and theme are followed automatically, while manual preferences are not saved.</li>
           <li><strong>Analytics:</strong> no analytics or advertising tracker is currently configured. This category remains off unless you enable it.</li>
           <li><strong>Payment flows:</strong> when you choose to pay or manage a saved card, Stripe Checkout receives the required order, payment type and browser/device information. Card details are entered on Stripe's hosted page. Apple Pay is shown when available for your device and browser.</li>
@@ -72,7 +72,7 @@ export default function CookiesPolicy() {
           ))}
         </ul>
         <p>
-          Passwords are handled by the authentication provider. Revex uses Stripe for checkout and payouts;
+          Passwords are handled by the authentication provider. Supabase Auth uses Resend to deliver signup verification codes; Resend receives your email address and the one-time code for that purpose. Revex uses Stripe for checkout and payouts;
           payment details entered in a Stripe flow are processed by Stripe. Revex stores the account,
           transaction and status details needed to run those features.
         </p>

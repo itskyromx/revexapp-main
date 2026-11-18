@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { prepareImageUpload, PHOTO_POLICY_VERSION } from '@/lib/imageUpload';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEYS;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

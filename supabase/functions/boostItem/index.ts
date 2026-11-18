@@ -6,10 +6,10 @@ import { findBoostPackage } from '../_shared/boost.ts';
 export async function handleBoostItem(req: Request) {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!, {
+    const client = createClient(Deno.env.get('SUPABASE_URL')!, JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!)['default'], {
       global: { headers: { Authorization: req.headers.get('Authorization') || '' } },
     });
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SECRET_KEYS')!);
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')!)['default']);
     const { data: { user } } = await client.auth.getUser();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     const body = await req.json().catch(() => ({}));

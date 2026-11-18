@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL'),
-      Deno.env.get('SUPABASE_PUBLISHABLE_KEYS'),
+      JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!)['default'],
       { global: { headers: { Authorization: req.headers.get('Authorization') } } }
     );
     const { data: { user } } = await supabase.auth.getUser();

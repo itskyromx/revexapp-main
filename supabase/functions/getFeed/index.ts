@@ -4,7 +4,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 export async function handleFeed(req: Request) {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!, {
+    const client = createClient(Deno.env.get('SUPABASE_URL')!, JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!)['default'], {
       global: { headers: { Authorization: req.headers.get('Authorization') || '' } },
     });
     const { data: { user } } = await client.auth.getUser();

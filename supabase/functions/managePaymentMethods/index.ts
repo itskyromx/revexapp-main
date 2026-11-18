@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
     const url = Deno.env.get('SUPABASE_URL')!;
     const authorization = req.headers.get('Authorization');
     if (!authorization) return reply({ error: 'Sign in is required.' }, 401);
-    const supabase = createClient(url, Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!, { global: { headers: { Authorization: authorization } } });
-    const admin = createClient(url, Deno.env.get('SUPABASE_SECRET_KEYS')!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const supabase = createClient(url, JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!)['default'], { global: { headers: { Authorization: authorization } } });
+    const admin = createClient(url, JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')!)['default'], { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return reply({ error: 'Sign in is required.' }, 401);
     const body = await req.json().catch(() => ({}));

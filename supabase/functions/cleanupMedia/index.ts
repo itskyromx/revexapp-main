@@ -6,7 +6,7 @@ Deno.serve(async req => {
   const token = req.headers.get('x-media-cleanup-token');
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return new Response('Unauthorized', { status: 401 });
   const projectUrl = Deno.env.get('SUPABASE_URL')!;
-  const admin = createClient(projectUrl, Deno.env.get('SUPABASE_SECRET_KEYS')!);
+  const admin = createClient(projectUrl, JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')!)['default']);
   const { data: allowed, error: authError } = await admin.rpc('authorize_media_cleanup', { p_token: token });
   if (authError || allowed !== true) return new Response('Unauthorized', { status: 401 });
   const body = await req.json().catch(() => ({}));

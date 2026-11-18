@@ -5,7 +5,7 @@ export const COOKIE_CATEGORIES = [
   {
     key: "essential",
     title: "Essential",
-    description: "Required for sign-in, account security, photo safety checks, consent records, site fonts and QR generation. Uploaded photos are checked before publication. The QR provider receives the drop-off code when its image is generated.",
+    description: "Required for sign-in, account security, email verification, photo safety checks, consent records, site fonts and QR generation. Supabase Auth uses Resend to deliver signup confirmation codes. Uploaded photos are checked before publication. The QR provider receives the drop-off code when its image is generated.",
     required: true,
   },
   {
@@ -60,6 +60,11 @@ export const THIRD_PARTY_SERVICES = [
     name: "Supabase",
     purpose: "Authentication, database, media storage and server functions used to operate Revex.",
     when: "When you use account and platform features.",
+  },
+  {
+    name: "Resend",
+    purpose: "Transactional email delivery for Supabase Auth signup confirmation codes. Resend receives the account email address and one-time verification code.",
+    when: "When you create an account or request another signup confirmation code.",
   },
   {
     name: "Cloudflare",

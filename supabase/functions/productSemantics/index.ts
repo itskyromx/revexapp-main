@@ -102,8 +102,8 @@ Deno.serve(async (req) => {
 
   try {
     const url = Deno.env.get("SUPABASE_URL");
-    const publish = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
-    const secret = Deno.env.get("SUPABASE_SECRET_KEYS");
+    const publish = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS")!)['default'];
+    const secret = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")!)['default'];
     const authorization = req.headers.get("Authorization");
     if (!url || !publish || !secret || !authorization) return response({ error: "Sign in is required." }, 401);
 
