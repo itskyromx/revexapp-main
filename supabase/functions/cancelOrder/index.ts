@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { stripeRequest } from '../_shared/stripe.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -31,18 +32,28 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'This order can no longer be cancelled' }), { status: 400, headers: corsHeaders });
     }
 
-    const { data: updated, error } = await admin.from('orders').update({ status: 'cancelled' }).eq('id', order.id).select().single();
-    if (error) throw error;
-
-    if (order.item_id) {
-      const { data: item } = await admin.from('items').select('status').eq('id', order.item_id).single();
-      if (item && item.status !== 'sold') {
-        await admin.from('items').update({ status: 'available' }).eq('id', order.item_id);
+    if (order.stripe_payment_intent_id) {
+      const intent = await stripeRequest(`payment_intents/${order.stripe_payment_intent_id}`, undefined, 'GET');
+      if (intent.status === 'succeeded') {
+        return new Response(JSON.stringify({ error: 'Payment already completed; this order cannot be cancelled here.' }), { status: 409, headers: corsHeaders });
+      }
+      if (!['canceled', 'succeeded'].includes(intent.status)) {
+        await stripeRequest(`payment_intents/${order.stripe_payment_intent_id}/cancel`);
+      }
+    }
+    if (order.stripe_session_id) {
+      const session = await stripeRequest(`checkout/sessions/${order.stripe_session_id}`, undefined, 'GET').catch(() => null);
+      if (session?.status === 'open') await stripeRequest(`checkout/sessions/${order.stripe_session_id}/expire`);
+      if (session?.payment_status === 'paid') {
+        return new Response(JSON.stringify({ error: 'Payment already completed; this order cannot be cancelled here.' }), { status: 409, headers: corsHeaders });
       }
     }
 
-    console.log('order cancelled', { orderId: order.id });
-    return new Response(JSON.stringify({ order: updated }), { headers: corsHeaders });
+    const { error } = await admin.from('orders').delete().eq('id', order.id).eq('status', 'awaiting_payment');
+    if (error) throw error;
+
+    console.log('unpaid order removed', { orderId: order.id });
+    return new Response(JSON.stringify({ orderId: order.id, removed: true }), { headers: corsHeaders });
   } catch (error) {
     console.error('cancelOrder failed:', error?.message || error);
     return new Response(JSON.stringify({ error: error?.message || 'Could not cancel the order.' }), { status: 500, headers: corsHeaders });

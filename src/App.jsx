@@ -25,6 +25,7 @@ import Onboarding from '@/pages/Onboarding';
 import LegacyItemRedirect from '@/pages/LegacyItemRedirect';
 import Reports from '@/pages/Reports';
 import Orders from '@/pages/Orders';
+import OrderConfirmation from '@/pages/OrderConfirmation';
 import SettingsPage from '@/pages/Settings';
 import TermsAndConditions from '@/pages/TermsAndConditions';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
@@ -90,6 +91,7 @@ const AuthenticatedApp = () => {
       <Route path="/haul/:legacyId" element={<LegacyItemRedirect />} />
       <Route path="/reports" element={<Reports />} />
       <Route path="/orders" element={<Orders />} />
+      <Route path="/order-confirmation" element={<OrderConfirmation />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`} replace />} />}>
         <Route path="/upload" element={<UploadPage />} />

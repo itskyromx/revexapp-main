@@ -29,20 +29,38 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
     if (order.status !== 'awaiting_payment') return new Response(JSON.stringify({ order }), { headers: corsHeaders });
-    if (!order.stripe_session_id) return new Response(JSON.stringify({ order, pending: true }), { headers: corsHeaders });
+    let paymentIntentId = order.stripe_payment_intent_id;
+    if (!paymentIntentId && order.stripe_session_id) {
+      const legacySession = await stripeRequest(`checkout/sessions/${order.stripe_session_id}`, undefined, 'GET');
+      if (legacySession?.metadata?.order_id !== order.id) {
+        return new Response(JSON.stringify({ error: 'Checkout session does not match this order.' }), { status: 403, headers: corsHeaders });
+      }
+      if (legacySession?.payment_status !== 'paid') return new Response(JSON.stringify({ order, pending: true }), { headers: corsHeaders });
+      paymentIntentId = typeof legacySession.payment_intent === 'string' ? legacySession.payment_intent : '';
+    }
+    if (!paymentIntentId) return new Response(JSON.stringify({ order, pending: true }), { headers: corsHeaders });
 
-    const session = await stripeRequest(`checkout/sessions/${order.stripe_session_id}`, undefined, 'GET');
-    if (session?.payment_status !== 'paid') return new Response(JSON.stringify({ order, pending: true }), { headers: corsHeaders });
-
-    const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : '';
+    const paymentIntent = await stripeRequest(`payment_intents/${paymentIntentId}`, undefined, 'GET');
+    if (paymentIntent?.metadata?.order_id !== order.id) {
+      return new Response(JSON.stringify({ error: 'Payment does not match this order.' }), { status: 403, headers: corsHeaders });
+    }
+    if (paymentIntent?.amount !== Math.round(Number(order.total) * 100) || paymentIntent?.currency !== 'eur') {
+      return new Response(JSON.stringify({ error: 'Payment amount does not match this order.' }), { status: 409, headers: corsHeaders });
+    }
+    if (paymentIntent?.status !== 'succeeded') return new Response(JSON.stringify({ order, pending: true }), { headers: corsHeaders });
 
     const { data: updated, error } = await admin.from('orders').update({
       status: 'paid',
       paid_date: new Date().toISOString(),
       drop_off_code: order.drop_off_code || generateDropOffCode(),
-      stripe_payment_intent_id: paymentIntent,
-    }).eq('id', order.id).select().single();
+      stripe_payment_intent_id: paymentIntent.id,
+    }).eq('id', order.id).eq('status', 'awaiting_payment').select().maybeSingle();
     if (error) throw error;
+
+    if (!updated) {
+      const { data: current } = await admin.from('orders').select('*').eq('id', order.id).single();
+      return new Response(JSON.stringify({ order: current }), { headers: corsHeaders });
+    }
 
     await admin.from('items').update({ status: 'reserved' }).eq('id', order.item_id);
     if (order.offer_id) {

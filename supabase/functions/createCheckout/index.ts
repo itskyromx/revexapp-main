@@ -1,6 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { safeOrigin, stripeRequest } from '../_shared/stripe.ts';
+import { stripeRequest } from '../_shared/stripe.ts';
 
 function reply(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -35,53 +35,72 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const orderId = String(body.orderId || '');
-    const origin = safeOrigin(body.origin);
     const choice = ['card', 'mb_way', 'apple_pay'].includes(body.paymentMethod) ? body.paymentMethod : 'card';
-    if (!orderId || !origin) return reply({ error: 'Order and return origin are required.' }, 400);
+    if (!orderId) return reply({ error: 'Order is required.' }, 400);
 
     const { data: order } = await supabase.from('orders').select('*').eq('id', orderId).maybeSingle();
     if (!order) return reply({ error: 'Order not found.' }, 404);
     if (order.buyer_id !== user.id) return reply({ error: 'This is not your order.' }, 403);
     if (order.status !== 'awaiting_payment') return reply({ error: 'This order is not awaiting payment.' }, 409);
 
-    if (order.stripe_session_id) {
-      const previous = await stripeRequest(`checkout/sessions/${order.stripe_session_id}`, undefined, 'GET').catch(() => null);
-      if (previous?.status === 'open' && previous?.url && previous?.metadata?.payment_method_choice === choice) return reply({ url: previous.url });
-      if (previous?.status === 'open') await stripeRequest(`checkout/sessions/${order.stripe_session_id}/expire`).catch(() => null);
+    const { data: item, error: itemError } = await admin.from('items').select('price,title,created_by_id,status').eq('id', order.item_id).single();
+    if (itemError || !item) return reply({ error: 'The item for this order could not be found.' }, 404);
+    if (item.created_by_id === user.id || item.status !== 'available') return reply({ error: 'This item is no longer available.' }, 409);
+    let itemPrice = Number(item.price);
+    if (order.offer_id) {
+      const { data: offer, error: offerError } = await admin.from('offers').select('amount,status,buyer_id,item_id').eq('id', order.offer_id).single();
+      if (offerError || !offer || offer.buyer_id !== user.id || offer.item_id !== item.id || offer.status !== 'accepted') {
+        return reply({ error: 'This offer is no longer valid.' }, 409);
+      }
+      itemPrice = Number(offer.amount);
     }
-
-    const customerId = await getOrCreateCustomer(admin, user);
-    const itemPrice = Number(order.item_price);
-    const shippingPrice = Number(order.shipping_price || 0);
+    let shippingPrice = 0;
+    let shippingName = 'Shipping';
+    if (order.shipping_option_id) {
+      const { data: shippingOption } = await admin.from('shipping_options').select('name,price,active').eq('id', order.shipping_option_id).single();
+      if (!shippingOption?.active) return reply({ error: 'The selected shipping option is no longer available.' }, 409);
+      shippingPrice = Number(shippingOption.price);
+      shippingName = shippingOption.name;
+    }
     if (!Number.isFinite(itemPrice) || itemPrice <= 0 || !Number.isFinite(shippingPrice) || shippingPrice < 0) return reply({ error: 'Invalid order total.' }, 400);
     const fee = Math.round((itemPrice * 0.04 + 0.6) * 100) / 100;
     const total = Math.round((itemPrice + shippingPrice + fee) * 100) / 100;
+    const { error: orderUpdateError } = await admin.from('orders').update({
+      item_title: item.title,
+      item_price: itemPrice,
+      shipping_price: shippingPrice,
+      shipping_option_name: shippingName,
+      buyer_protection_fee: fee,
+      total,
+    }).eq('id', order.id).eq('status', 'awaiting_payment');
+    if (orderUpdateError) throw orderUpdateError;
+
+    if (order.stripe_payment_intent_id) {
+      const previous = await stripeRequest(`payment_intents/${order.stripe_payment_intent_id}`, undefined, 'GET').catch(() => null);
+      if (previous?.status === 'requires_payment_method' && previous?.metadata?.payment_method_choice === choice && previous?.amount === Math.round(total * 100)) {
+        return reply({ clientSecret: previous.client_secret });
+      }
+      if (previous?.status === 'requires_payment_method') await stripeRequest(`payment_intents/${order.stripe_payment_intent_id}/cancel`).catch(() => null);
+      else if (previous?.status && previous.status !== 'canceled') return reply({ error: 'This payment is already being processed.' }, 409);
+    }
+
+    const customerId = await getOrCreateCustomer(admin, user);
     const params: Record<string, string> = {
-      mode: 'payment',
+      amount: String(Math.round(total * 100)),
+      currency: 'eur',
       customer: customerId,
-      'payment_method_types[0]': choice === 'mb_way' ? 'mb_way' : 'card',
       'metadata[order_id]': order.id,
       'metadata[payment_method_choice]': choice,
-      'payment_intent_data[metadata][order_id]': order.id,
-      'payment_intent_data[transfer_group]': order.id,
-      success_url: `${origin}/orders?checkout=success&order=${order.id}`,
-      cancel_url: `${origin}/item/${order.item_id}?checkout=cancel&order=${order.id}`,
+      transfer_group: order.id,
     };
-    const lines = [
-      [order.item_title || 'Item', Math.round(Number(order.item_price) * 100)],
-      ['Buyer Protection', Math.round(fee * 100)],
-    ];
-    if (Number(order.shipping_price) > 0) lines.push([order.shipping_option_name || 'Shipping', Math.round(Number(order.shipping_price) * 100)]);
-    lines.forEach(([name, amount], i) => {
-      params[`line_items[${i}][quantity]`] = '1';
-      params[`line_items[${i}][price_data][currency]`] = 'eur';
-      params[`line_items[${i}][price_data][unit_amount]`] = String(amount);
-      params[`line_items[${i}][price_data][product_data][name]`] = String(name);
-    });
-    const session = await stripeRequest('checkout/sessions', params);
-    const { error: updateError } = await admin.from('orders').update({ stripe_session_id: session.id, buyer_protection_fee: fee, total }).eq('id', order.id);
+    // Keep the Payment Element limited to the customer's explicit choice.
+    // Apple Pay is a wallet for the card payment method; automatic methods
+    // would also expose financing options such as Klarna.
+    params['payment_method_types[0]'] = choice === 'mb_way' ? 'mb_way' : 'card';
+    const paymentIntent = await stripeRequest('payment_intents', params);
+    const { error: updateError } = await admin.from('orders').update({ stripe_payment_intent_id: paymentIntent.id, buyer_protection_fee: fee, total }).eq('id', order.id);
     if (updateError) throw updateError;
-    return reply({ url: session.url });
+    return reply({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
     console.error('createCheckout failed:', error);
     return reply({ error: error instanceof Error ? error.message : 'Could not start checkout.' }, 500);

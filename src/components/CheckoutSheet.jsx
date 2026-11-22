@@ -1,11 +1,52 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import { supabase } from "@/api/supabaseClient";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { X, ShieldCheck, Loader2, Truck, ChevronDown, CreditCard, MapPin, House, PackageCheck } from "lucide-react";
-import { orderTotals, formatMoney, isEmbedded } from "@/lib/payments";
+import { orderTotals, formatMoney } from "@/lib/payments";
 import PickupPointMap from "@/components/PickupPointMap";
 import mbWayLogo from "@/assets/mbway.jpg";
 import applePayLogo from "@/assets/apple_pay.png";
+
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+export function InlinePaymentForm({ orderId, paymentMethod = "card", onError, onBusy }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const submitPayment = async (event) => {
+    event.preventDefault();
+    if (!stripe || !elements || submitting) return;
+    setSubmitting(true);
+    onBusy(true);
+    onError("");
+    try {
+      const returnUrl = `${window.location.origin}/order-confirmation?order=${encodeURIComponent(orderId)}`;
+      const { error: paymentError, paymentIntent } = await stripe.confirmPayment({ elements, confirmParams: { return_url: returnUrl }, redirect: "if_required" });
+      if (paymentError) throw paymentError;
+      if (paymentIntent?.status === "succeeded") navigate(`/order-confirmation?order=${encodeURIComponent(orderId)}`);
+    } catch (paymentError) {
+      onError(paymentError.message || "Payment could not be completed. Please try again.");
+    } finally {
+      setSubmitting(false);
+      onBusy(false);
+    }
+  };
+  return <form onSubmit={submitPayment} className="mt-4 space-y-4">
+    <PaymentElement options={{
+      layout: "tabs",
+      ...(paymentMethod === "mb_way" ? { fields: { billingDetails: { phone: "always" } } } : {}),
+    }} />
+    <button type="submit" disabled={!stripe || submitting} className="acid-btn w-full bg-brand-red text-white disabled:opacity-50">
+      {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing payment…</> : "Pay securely"}
+    </button>
+  </form>;
+}
 
 function PaymentIcon({ method }) {
   if (method === "mb_way") return <img src={mbWayLogo} alt="" className="h-6 w-10 rounded object-contain" />;
@@ -29,6 +70,9 @@ export default function CheckoutSheet({ item, offer, onClose }) {
   const [pickupLocation, setPickupLocation] = useState({ name: "", address: "", lat: null, lng: null });
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [paymentMenuOpen, setPaymentMenuOpen] = useState(false);
+  const [paymentClientSecret, setPaymentClientSecret] = useState("");
+  const [paymentOrderId, setPaymentOrderId] = useState("");
+  const [activeOrderId, setActiveOrderId] = useState("");
 
   const price = offer ? Number(offer.amount) : Number(item?.price);
   const deliveryOptions = useMemo(
@@ -80,17 +124,17 @@ export default function CheckoutSheet({ item, offer, onClose }) {
   }, [deliveryType, deliveryOptions]);
 
   const pay = async () => {
-    if (!checkoutOption || !user) return;
+    if (!checkoutOption || !user || busy) return;
+    if (!stripePromise) {
+      setError("Stripe is not configured in this app yet.");
+      return;
+    }
     if (deliveryType === "home" && !address.trim()) {
       setError("Enter the delivery address.");
       return;
     }
     if (deliveryType === "pickup" && (!pickupLocation.name.trim() || !pickupLocation.address.trim() || pickupLocation.lat == null || pickupLocation.lng == null)) {
       setError("Select a point on the map and enter its name and address.");
-      return;
-    }
-    if (isEmbedded()) {
-      setError("Checkout only works from the published app — open it in a new tab to pay.");
       return;
     }
     if (item.status === "sold") {
@@ -111,7 +155,7 @@ export default function CheckoutSheet({ item, offer, onClose }) {
       if (shippingAddress && shippingAddress !== (user.shipping_address || "")) {
         await supabase.from("profiles").update({ shipping_address: shippingAddress }).eq("id", user.id);
       }
-      const { data: order, error: orderError } = await supabase.from("orders").insert({
+      const orderValues = {
         item_id: item.id,
         item_title: item.title,
         item_image: item.image_url || "",
@@ -133,23 +177,45 @@ export default function CheckoutSheet({ item, offer, onClose }) {
         drop_off_point: deliveryType === "pickup" ? `${pickupLocation.name.trim()} — ${pickupLocation.address.trim()}, ${deliveryCountry}` : checkoutOption.drop_off_point || "",
         drop_off_instructions: checkoutOption.drop_off_instructions || "",
         status: "awaiting_payment",
-      }).select().single();
+      };
+      const { data: previousOrders, error: previousOrdersError } = await supabase.from("orders")
+        .select("id")
+        .eq("item_id", item.id)
+        .eq("buyer_id", user.id)
+        .eq("status", "awaiting_payment")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (previousOrdersError) throw previousOrdersError;
+      const previousOrderId = previousOrders?.[0]?.id;
+      const orderResult = previousOrderId
+        ? await supabase.from("orders").update(orderValues).eq("id", previousOrderId).select().single()
+        : await supabase.from("orders").insert(orderValues).select().single();
+      const { data: order, error: orderError } = orderResult;
       if (orderError) throw orderError;
+      setActiveOrderId(order.id);
 
       const res = await supabase.functions.invoke("createCheckout", { body: {
         orderId: order.id,
         paymentMethod,
         origin: window.location.origin,
       }});
-      if (res.data?.url) {
-        window.location.href = res.data.url;
-        return;
-      }
-      setError(res.data?.error || "Could not start checkout.");
+      if (res.error) throw res.error;
+      if (res.data?.clientSecret) {
+        setPaymentClientSecret(res.data.clientSecret);
+        setPaymentOrderId(order.id);
+      } else setError(res.data?.error || "Could not start checkout.");
     } catch (checkoutError) {
       setError(checkoutError.message || "Could not start checkout.");
     }
     setBusy(false);
+  };
+
+  const closeCheckout = async () => {
+    if (activeOrderId) {
+      await supabase.functions.invoke("cancelOrder", { body: { orderId: activeOrderId } }).catch(() => {});
+      setActiveOrderId("");
+    }
+    onClose();
   };
 
   const changeDeliveryType = (type) => {
@@ -162,11 +228,11 @@ export default function CheckoutSheet({ item, offer, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={closeCheckout} />
       <div className="relative max-h-[92vh] w-full max-w-md overflow-y-auto acid-card bg-card p-5">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-display text-2xl uppercase">Checkout</h3>
-          <button onClick={onClose} aria-label="Close checkout" className="sticker flex h-9 w-9 items-center justify-center rounded-full bg-card">
+          <button onClick={closeCheckout} aria-label="Close checkout" className="sticker flex h-9 w-9 items-center justify-center rounded-full bg-card">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -208,10 +274,9 @@ export default function CheckoutSheet({ item, offer, onClose }) {
           <div className="relative"><MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><input id="pickup-name" value={pickupLocation.name} onChange={(event) => setPickupLocation((current) => ({ ...current, name: event.target.value }))} placeholder="Point name (e.g. parcel shop)" className="acid-input pl-9 text-sm" /></div>
           <input aria-label="Collection point address" value={pickupLocation.address} onChange={(event) => setPickupLocation((current) => ({ ...current, address: event.target.value }))} placeholder="Full address and postcode" className="acid-input text-sm" />
           <PickupPointMap value={pickupLocation} country={deliveryCountry} onChange={(position) => setPickupLocation((current) => ({ ...current, ...position }))} />
-          <p className="text-[10px] text-muted-foreground">The map lets you mark a location manually in Portugal or Spain. Carrier pickup-point listings become available when a carrier API is connected.</p>
         </div>}
 
-        <section className="mt-4">
+        {!paymentClientSecret && <section className="mt-4">
           <span className="acid-label">Payment method</span>
           <div className="relative mt-1">
             <button type="button" aria-expanded={paymentMenuOpen} onClick={() => setPaymentMenuOpen((open) => !open)} className="acid-card-sm flex w-full items-center justify-between gap-3 bg-card p-3 text-left">
@@ -227,7 +292,7 @@ export default function CheckoutSheet({ item, offer, onClose }) {
               })}
             </div>}
           </div>
-        </section>
+        </section>}
 
         <section className="mt-4">
           <span className="acid-label">{deliveryType === "home" ? "Home delivery service" : "Collection point service"}</span>
@@ -247,9 +312,11 @@ export default function CheckoutSheet({ item, offer, onClose }) {
         </section>
 
         {error && <p role="alert" className="mt-3 text-xs text-brand-red">{error}</p>}
-        <button onClick={pay} disabled={busy || !checkoutOption || loading} className="acid-btn mt-4 w-full bg-brand-red text-white disabled:opacity-50">
-          {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Opening secure payment…</> : `Pay ${formatMoney(totals.total)}`}
-        </button>
+        {!paymentClientSecret ? <button onClick={pay} disabled={busy || !checkoutOption || loading} className="acid-btn mt-4 w-full bg-brand-red text-white disabled:opacity-50">
+          {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing secure payment…</> : `Continue to payment · ${formatMoney(totals.total)}`}
+        </button> : stripePromise ? <Elements stripe={stripePromise} options={{ clientSecret: paymentClientSecret, appearance: { theme: "stripe" } }}>
+          <InlinePaymentForm orderId={paymentOrderId} paymentMethod={paymentMethod} onError={setError} onBusy={setBusy} />
+        </Elements> : <p role="alert" className="mt-3 text-xs text-brand-red">Stripe is not configured in this app yet.</p>}
       </div>
     </div>
   );

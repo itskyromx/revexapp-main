@@ -29,7 +29,6 @@ export default function ItemDetail() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [cancelNotice, setCancelNotice] = useState("");
   const [blockedRelationship, setBlockedRelationship] = useState(false);
   const [recommendedItems, setRecommendedItems] = useState([]);
   const [imageIndex, setImageIndex] = useState(0);
@@ -109,7 +108,6 @@ export default function ItemDetail() {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get("order");
     if (params.get("checkout") !== "cancel" || !orderId) return;
-    setCancelNotice("Checkout cancelled — nothing was charged and the item is available again.");
     supabase.functions.invoke("cancelOrder", { body: { orderId } }).catch(() => {});
     window.history.replaceState({}, "", `/item/${itemId}`);
   }, [itemId]);
@@ -220,7 +218,6 @@ export default function ItemDetail() {
       </header>
 
       <div className="max-w-md mx-auto p-4">
-        {cancelNotice && <div className="acid-card-sm bg-muted p-3 mb-3 text-xs">{cancelNotice}</div>}
         <div className="acid-card overflow-hidden">
           <div ref={viewRef} className="aspect-[4/5] bg-muted border-b-[3px] border-border relative">
             {currentImage ?

@@ -3,6 +3,21 @@ import { POLICY_VERSION, LEGACY_CLIENT_POLICY_VERSION, MAX_BYTES, MIME_EXT, mode
 // Dependencies are injected so auth, provider failures and upload ordering can be tested.
 export function createModeratedUploadHandler(deps: any) {
   const { createClient, env, imageSize, corsHeaders, fetch: fetcher = fetch } = deps;
+  const getApiKey = (name: string) => {
+    const value = env(name);
+    if (typeof value !== 'string' || !value.trim()) throw new Error(`Missing ${name}`);
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object' && typeof parsed.default === 'string' && parsed.default) {
+        return parsed.default;
+      }
+      throw new Error(`Missing default key in ${name}`);
+    } catch (error) {
+      // Older deployments may still provide a single key instead of the named-key JSON object.
+      if (error instanceof SyntaxError) return value;
+      throw error;
+    }
+  };
   const reply = (body: unknown, status=200) => Response.json(body,{status,headers:corsHeaders});
   return async (req: Request): Promise<Response> => {
     if (req.method==='OPTIONS') return new Response('ok',{headers:corsHeaders});
@@ -11,7 +26,7 @@ export function createModeratedUploadHandler(deps: any) {
     let stage='authentication';
     try {
       const project=env('SUPABASE_URL');
-      const client=createClient(project,env('SUPABASE_PUBLISHABLE_KEYS'),{global:{headers:{Authorization:req.headers.get('Authorization')||''}}});
+      const client=createClient(project,getApiKey('SUPABASE_PUBLISHABLE_KEYS'),{global:{headers:{Authorization:req.headers.get('Authorization')||''}}});
       const {data:{user},error:authError}=await client.auth.getUser();
       if (authError || !user) return reply({error:'Please sign in to upload a photo.'},401);
       const key=env('OPENAI_API_KEY');
@@ -41,7 +56,7 @@ export function createModeratedUploadHandler(deps: any) {
       if (actualType!==file.type || !dimensions.width || !dimensions.height || dimensions.width>4096 || dimensions.height>4096 || hasAnimation(bytes,file.type)) {
         return reply({error:'Choose a still image no larger than 4096 × 4096 pixels, with the correct file format.'},400);
       }
-      admin=createClient(project,env('SUPABASE_SECRET_KEYS'));
+      admin=createClient(project,getApiKey('SUPABASE_SECRET_KEYS'));
       const rpc=async (name:string,args:any) => {
         const {data,error}=await admin.rpc(name,args); if(error) throw new Error('Moderation database unavailable'); return data;
       };
