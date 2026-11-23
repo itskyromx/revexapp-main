@@ -1,6 +1,3 @@
-// Revex shared helpers + constants
-import { hasCookieConsent } from "@/lib/cookieConsent";
-
 export const CONDITION_LABELS = {
   new_with_tags: "NWT",
   like_new: "Like New",
@@ -106,22 +103,18 @@ export function timeAgoVerbose(dateStr) {
 }
 
 export function loadLiked() {
-  if (!hasCookieConsent("preferences")) return new Set();
   try { return new Set(JSON.parse(localStorage.getItem("revex_liked") || "[]")); }
   catch { return new Set(); }
 }
 export function saveLiked(set) {
-  if (!hasCookieConsent("preferences")) return;
   try { localStorage.setItem("revex_liked", JSON.stringify([...set])); } catch {}
 }
 
 export function loadSaved() {
-  if (!hasCookieConsent("preferences")) return new Set();
   try { return new Set(JSON.parse(localStorage.getItem("revex_saved") || "[]")); }
   catch { return new Set(); }
 }
 export function saveSaved(set) {
-  if (!hasCookieConsent("preferences")) return;
   try { localStorage.setItem("revex_saved", JSON.stringify([...set])); } catch {}
 }
 

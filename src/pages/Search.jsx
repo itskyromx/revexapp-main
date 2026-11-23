@@ -8,7 +8,6 @@ import { formatPrice } from "@/lib/revex";
 import { getBlockedIds, hideBlocked } from "@/lib/blocks";
 import { PRODUCT_BRANDS, PRODUCT_CATEGORIES, PRODUCT_GENDER_LABELS, PRODUCT_GENDERS } from "@/lib/revex";
 import ItemCard from "@/components/ItemCard";
-import { hasCookieConsent } from "@/lib/cookieConsent";
 
 const HOT_FALLBACK = ["y2k", "vintage", "streetwear", "archive", "cottagecore", "thrifting"];
 
@@ -95,7 +94,7 @@ export default function Search() {
 
   useEffect(() => {
     const term = query.trim();
-    if (term.length < 3 || !hasCookieConsent("personalization")) {
+    if (term.length < 3) {
       setSemanticIds([]);
       setSemanticLoading(false);
       return undefined;

@@ -16,7 +16,6 @@ let feedCache = null;
 const INDEX_KEY = "revex_feed_index";
 
 async function personalizeItems(items) {
-  if (!hasCookieConsent("personalization")) return items;
   try {
     const { data, error } = await supabase.functions.invoke("productSemantics", { body: { mode: "recommend" } });
     if (error || !data?.itemIds?.length) return items;
@@ -114,11 +113,9 @@ export default function Feed() {
   const rememberIndex = () => {
     const el = scrollRef.current;
     if (!el || !el.clientHeight) return;
-    if (hasCookieConsent("preferences")) {
-      try {
+    try {
         sessionStorage.setItem(INDEX_KEY, String(Math.round(el.scrollTop / el.clientHeight)));
-      } catch {}
-    }
+    } catch {}
   };
 
   const loadMore = async () => {

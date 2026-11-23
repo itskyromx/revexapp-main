@@ -13,10 +13,10 @@ export const AuthProvider = ({ children }) => {
   const requestVersion = useRef(0);
   const activeUserId = useRef(null);
 
-  useEffect(() => {
-    checkUserAuth();
+useEffect(() => {
     let timer;
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (_event === 'TOKEN_REFRESHED') return;
       clearTimeout(timer);
       requestVersion.current += 1;
       if (session?.user) {
@@ -27,8 +27,11 @@ export const AuthProvider = ({ children }) => {
           setIsAuthenticated(false);
           setIsLoadingAuth(true);
         }
-        // Leave the auth callback before making further Supabase requests.
-        timer = setTimeout(() => { void checkUserAuth(changedAccount); }, 0);
+        // The event already carries the authenticated user. Reuse it to load
+        // the profile instead of immediately issuing another /auth/v1/user.
+        // Leave the callback before making the profile request to avoid
+        // deadlocks in the auth client's callback lock.
+        timer = setTimeout(() => { void checkUserAuth(changedAccount, session.user); }, 0);
       } else {
         activeUserId.current = null;
         setUser(null);
@@ -59,11 +62,11 @@ export const AuthProvider = ({ children }) => {
     if (shouldRedirect) window.location.href = '/login';
   };
 
-  const checkUserAuth = async (showLoader = true) => {
+const checkUserAuth = async (showLoader = true, authUser = null) => {
     const version = ++requestVersion.current;
     try {
       if (showLoader) setIsLoadingAuth(true);
-      const currentUser = await getCurrentUserProfile();
+      const currentUser = await getCurrentUserProfile(authUser);
       if (version !== requestVersion.current) return null;
       setAuthError(null);
       if (currentUser) {

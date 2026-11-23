@@ -5,7 +5,7 @@ export const COOKIE_CATEGORIES = [
   {
     key: "essential",
     title: "Essential",
-    description: "Required for sign-in, account security, email verification, photo safety checks, consent records, site fonts and QR generation. Supabase Auth uses Resend to deliver signup confirmation codes. Uploaded photos are checked before publication. The QR provider receives the drop-off code when its image is generated.",
+    description: "Required for sign-in, account security, email verification, photo safety checks, consent records, site fonts and QR generation.",
     required: true,
   },
   {
@@ -17,7 +17,7 @@ export const COOKIE_CATEGORIES = [
   {
     key: "analytics",
     title: "Analytics",
-    description: "Measures how the platform is used. No analytics or advertising tracker is currently configured.",
+    description: "Measures how the platform is used.",
     required: false,
   },
   {

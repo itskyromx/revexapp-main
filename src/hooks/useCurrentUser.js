@@ -8,13 +8,21 @@ export function useCurrentUser() {
 
   useEffect(() => {
     let alive = true;
-    const load = () => getCurrentUserProfile()
+    const load = (authUser = null) => getCurrentUserProfile(authUser)
       .then((u) => { if (alive) setUser(u); })
       .catch(() => { if (alive) setUser(null); })
       .finally(() => { if (alive) setLoading(false); });
 
-    load();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
+    // The session event already contains the user, so don't make a second
+    // /auth/v1/user request just to load the profile.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED') return;
+      if (!session?.user) {
+        if (alive) { setUser(null); setLoading(false); }
+        return;
+      }
+      load(session.user);
+    });
     return () => { alive = false; sub.subscription.unsubscribe(); };
   }, []);
 

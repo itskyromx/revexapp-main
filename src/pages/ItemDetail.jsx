@@ -12,7 +12,6 @@ import { formatPrice, CONDITION_LABELS } from "@/lib/revex";
 import { useSaved } from "@/hooks/useSaved";
 import BottomNav from "@/components/BottomNav";
 import { getBlockRelationship } from "@/lib/blocks";
-import { hasCookieConsent } from "@/lib/cookieConsent";
 import { useItemView } from "@/hooks/useItemView";
 import { toast } from "@/components/ui/use-toast";
 
@@ -79,7 +78,7 @@ export default function ItemDetail() {
   }, [itemId]);
 
   useEffect(() => {
-    if (!item?.id || !hasCookieConsent("personalization")) return;
+    if (!item?.id) return;
     let active = true;
     (async () => {
       let recommendations = [];

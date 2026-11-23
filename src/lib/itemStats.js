@@ -1,11 +1,9 @@
 import { supabase } from "@/api/supabaseClient";
-import { hasCookieConsent } from "@/lib/cookieConsent";
 
 const viewedThisSession = new Set();
 const VIEWED_ITEMS_KEY = "revex-viewed-items";
 
 function rememberedViews() {
-  if (!hasCookieConsent("preferences")) return [];
   try {
     const stored = JSON.parse(localStorage.getItem(VIEWED_ITEMS_KEY) || "[]");
     return Array.isArray(stored) ? stored.filter(id => typeof id === "string") : [];
@@ -68,11 +66,8 @@ export async function recordItemView(itemId) {
     const { data: updated, error } = await supabase.rpc("record_item_view", { p_item_id: itemId });
     if (error) throw error;
     if (!updated) { viewedThisSession.delete(itemId); return null; }
-    if (hasCookieConsent("preferences")) {
-      // Other qualified items may have finished while this request was pending.
-      const viewed = [...new Set([...rememberedViews(), itemId])];
-      try { localStorage.setItem(VIEWED_ITEMS_KEY, JSON.stringify(viewed)); } catch {}
-    }
+    const viewed = [...new Set([...rememberedViews(), itemId])];
+    try { localStorage.setItem(VIEWED_ITEMS_KEY, JSON.stringify(viewed)); } catch {}
     return updated;
   } catch (error) {
     viewedThisSession.delete(itemId);

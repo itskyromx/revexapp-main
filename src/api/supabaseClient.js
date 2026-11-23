@@ -2,13 +2,17 @@ import { createClient } from '@supabase/supabase-js';
 import { prepareImageUpload, PHOTO_POLICY_VERSION } from '@/lib/imageUpload';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEYS;
+const supabasePubKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEYS;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabasePubKey);
 
-export async function getCurrentUserProfile() {
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
+export async function getCurrentUserProfile(authUser = null) {
+  let user = authUser;
+  if (!user) {
+    const { data, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    user = data.user;
+  }
   if (!user) return null;
   const { data: profile, error } = await supabase
     .from('profiles')

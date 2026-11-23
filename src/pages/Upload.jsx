@@ -6,7 +6,6 @@ import SiteHeader from "@/components/SiteHeader";
 import BottomNav from "@/components/BottomNav";
 import { Loader2, Upload, X } from "lucide-react";
 import { PRODUCT_BRANDS, PRODUCT_CATEGORIES, PRODUCT_GENDERS, PRODUCT_GENDER_LABELS, STYLE_TAGS, normalizeTags } from "@/lib/revex";
-import { hasCookieConsent } from "@/lib/cookieConsent";
 import { IMAGE_ACCEPT, IMAGE_LIMITS_LABEL, PHOTO_SAFETY_NOTICE } from "@/lib/imageUpload";
 
 const blankProduct = () => ({
@@ -159,10 +158,8 @@ export default function UploadPage() {
 
       finished.current = true;
       if (draftId) await supabase.from("drafts").delete().eq("id", draftId);
-      if (hasCookieConsent("personalization")) {
-        void supabase.functions.invoke("productSemantics", { body: { mode: "upsert", itemId: item.id } })
-          .then(({ error }) => { if (error) console.warn("Product vector will be retried later", error); });
-      }
+      void supabase.functions.invoke("productSemantics", { body: { mode: "upsert", itemId: item.id } })
+        .then(({ error }) => { if (error) console.warn("Product vector will be retried later", error); });
       navigate(`/item/${item.id}`, { replace: true });
     } catch (error) {
       console.error("Product publication failed", error);
