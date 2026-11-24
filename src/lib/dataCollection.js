@@ -17,13 +17,7 @@ export const COOKIE_CATEGORIES = [
   {
     key: "analytics",
     title: "Analytics",
-    description: "Measures how the platform is used.",
-    required: false,
-  },
-  {
-    key: "personalization",
-    title: "Search, recommendations and item analysis",
-    description: "Allows item descriptions, searches and selected style/brand preferences to be processed by Cloudflare Workers AI for semantic search and recommendations, and selected video frames by OpenAI for optional item analysis.",
+    description: "Measures how the user navigates through the platform.",
     required: false,
   },
 ];
@@ -35,15 +29,11 @@ export const DATA_COLLECTION_AREAS = [
   },
   {
     title: "Content and media",
-    details: "Items, descriptions, tags, listing details and archive/visibility choices, photos, videos, avatars and files uploaded to the platform's media storage. New photos are sent to OpenAI for mandatory safety checks before public storage, independently of optional personalization consent. Revex keeps the account ID, image fingerprint, policy version, decision and limited reason code for up to 30 days; rejected image files are not saved by Revex. Approved-file references remain while the media is stored.",
+    details: "Items, descriptions, tags, listing details and archive/visibility choices, photos, videos, avatars and files uploaded to the platform's media storage. New photos go through a mandatory safety checks before being published, independently of optional personalization consent. Revex keeps the account ID, image fingerprint, policy version, decision and limited reason code for up to 30 days; rejected image files are not saved by Revex. Approved-file references remain while the media is stored.",
   },
   {
     title: "Platform activity",
-    details: "Likes, views, shares, bookmarks, follows, blocks, searches sent to the profile search, notifications, chat messages, read status and message deletion records. To prevent notification spam, Revex keeps a private record of the user, item and recipient already notified about a like, even after the like or notification is removed; that record is deleted when the item or either account is deleted.",
-  },
-  {
-    title: "Semantic search and recommendations",
-    details: "With personalization consent, item search queries, public descriptions and selected style and brand preferences are sent to Cloudflare Workers AI's BGE-M3 model for multilingual embeddings. Optional video analysis sends selected frames and their image URLs to OpenAI to suggest item details. Revex stores item vectors and limited metadata in Supabase Vector Buckets; personal preference vectors are generated per request and are not stored.",
+    details: "Likes, views, shares, bookmarks, follows, blocks, searches sent to the profile search, notifications, chat messages, read status and message deletion records.",
   },
   {
     title: "Marketplace and support",
@@ -63,12 +53,12 @@ export const THIRD_PARTY_SERVICES = [
   },
   {
     name: "Resend",
-    purpose: "Transactional email delivery for Supabase Auth signup confirmation codes. Resend receives the account email address and one-time verification code.",
-    when: "When you create an account or request another signup confirmation code.",
+    purpose: "Transactional email delivery for Supabase Auth, including account verification, recovery, sign-in and account security emails. Resend receives the recipient email address and the one-time code or verification link data needed to complete the requested action.",
+    when: "When Supabase Auth needs to send an email for an account action.",
   },
   {
     name: "Cloudflare",
-    purpose: "Website delivery, network security, operational observability and BGE-M3 embedding inference through Workers AI.",
+    purpose: "Website delivery, network security and operational observability.",
     when: "When your browser connects to Revex, and when you use semantic search, recommendations or publish an item while personalization is enabled.",
   },
   {
@@ -85,16 +75,6 @@ export const THIRD_PARTY_SERVICES = [
     name: "Stripe",
     purpose: "Hosted payment checkout, MB WAY/card/eligible Apple Pay transactions, saved card management and seller payout onboarding.",
     when: "When you start a checkout, add/manage a saved card or set up seller payouts. Stripe receives the payment information and required device/browser details directly in its hosted checkout.",
-  },
-  {
-    name: "OpenAI",
-    purpose: "Checks new uploaded photos for potentially sexual content, graphic violence and self-harm imagery as a required platform safety measure. Optional item analysis processes selected video frames to suggest item details.",
-    when: "Photo safety checks run when you upload a photo, regardless of optional cookie choices. Optional video analysis runs only with personalization consent.",
-  },
-  {
-    name: "OpenStreetMap",
-    purpose: "Displays the map used to choose a collection point. The map provider receives the browser's IP address and requested map tile areas; selected coordinates are saved by Revex with the order and are not sent to OpenStreetMap by the map picker.",
-    when: "Only when you open the map to choose a collection point.",
   },
   {
     name: "Delivery carriers",

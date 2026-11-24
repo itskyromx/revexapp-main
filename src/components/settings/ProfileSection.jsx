@@ -82,8 +82,6 @@ export default function ProfileSection({ user, setUser }) {
           />
         </label>
       </div>
-      <p className="text-xs text-muted-foreground">{IMAGE_LIMITS_LABEL}</p>
-      <p className="text-xs text-muted-foreground">{PHOTO_SAFETY_NOTICE} <a href="/privacy-policy" target="_blank" rel="noreferrer" className="underline">Privacy policy</a></p>
 
       <div>
         <label htmlFor="profile-username" className="acid-label">{t("Username")}</label>

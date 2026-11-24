@@ -6,7 +6,7 @@ export default function CookiesPolicy() {
   return (
     <LegalDocument
       title="Cookies Policy"
-      updated="November 16, 2026"
+      updated="November 24, 2026"
       otherPath="/privacy-policy"
       otherLabel="Privacy Policy"
     >
@@ -24,7 +24,7 @@ export default function CookiesPolicy() {
           <code> revex-cookie-consent</code>, with the policy version and time of your choice.
         </p>
         <ul className="list-disc space-y-2 pl-6">
-          <li><strong>Essential:</strong> Supabase Auth stores the sign-in session in browser storage; Resend delivers signup confirmation codes to the email address you provide. The consent record remembers your selection. These are always on because account access and security depend on them.</li>
+          <li><strong>Essential:</strong> Supabase Auth stores the sign-in session in browser storage; Resend delivers account verification, recovery, sign-in and security emails using the address and one-time code or verification link data required for each action. The consent record remembers your selection. These are always on because account access and security depend on them.</li>
           <li><strong>Preferences:</strong> if enabled, Revex can store the theme, selected language, sidebar state, feed position and small local caches for likes, bookmarks and viewed items. Without this choice, device language and theme are followed automatically, while manual preferences are not saved.</li>
           <li><strong>Analytics:</strong> no analytics or advertising tracker is currently configured. This category remains off unless you enable it.</li>
           <li><strong>Payment flows:</strong> when you choose to pay or manage a saved card, Stripe Checkout receives the required order, payment type and browser/device information. Card details are entered on Stripe's hosted page. Apple Pay is shown when available for your device and browser.</li>
@@ -39,7 +39,7 @@ export default function CookiesPolicy() {
       </LegalSection>
 
       <LegalSection title="2. Choices you can make">
-        <p>Photo safety checks are required when uploading a new photo. The image is sent to OpenAI before it enters public storage. This security processing runs independently of optional personalization choices; rejecting optional cookies does not bypass moderation.</p>
+        <p>Photo safety checks are required when uploading a new photo. This security processing runs independently of optional personalization choices; rejecting optional cookies does not bypass moderation.</p>
         <p>On your first visit, the consent panel offers three choices:</p>
         <ul className="list-disc space-y-2 pl-6">
           <li><strong>Accept all:</strong> enables preferences, analytics and semantic search/recommendations, in addition to essential storage and services. Payment processing only starts when you choose to pay or manage a saved card.</li>
@@ -48,11 +48,9 @@ export default function CookiesPolicy() {
         </ul>
         <p>
           You can change your choice at any time using the control below. When you turn preferences off,
-          Revex removes the optional browser keys it controls. Semantic search and recommendations stay
-          off unless you enable that category; when enabled, product descriptions, search terms and
-          selected style/brand preferences are sent to Cloudflare Workers AI for BGE-M3 embedding generation. If you explicitly use
-          item video analysis, selected video frames and their image URLs are also sent to OpenAI to suggest
-          item details, only with personalization consent. Your account records and actions already
+          Revex removes the optional browser keys it controls. If you explicitly use
+          item analysis, selected video frames and their image URLs to suggest
+          item details. Your account records and actions already
           stored on the platform remain governed by the Privacy Policy and the feature you used.
         </p>
         <button type="button" onClick={openCookieSettings} className="acid-btn bg-brand-red px-4 py-2 text-xs text-white">
@@ -72,7 +70,7 @@ export default function CookiesPolicy() {
           ))}
         </ul>
         <p>
-          Passwords are handled by the authentication provider. Supabase Auth uses Resend to deliver signup verification codes; Resend receives your email address and the one-time code for that purpose. Revex uses Stripe for checkout and payouts;
+          Passwords are handled by the authentication provider. Supabase Auth uses Resend for transactional account emails; Resend receives your email address and the one-time code or verification link data needed to complete the requested action. Revex uses Stripe for checkout and payouts;
           payment details entered in a Stripe flow are processed by Stripe. Revex stores the account,
           transaction and status details needed to run those features.
         </p>
