@@ -29,7 +29,9 @@ export function InlinePaymentForm({ orderId, paymentMethod = "card", onError, on
       const returnUrl = `${window.location.origin}/order-confirmation?order=${encodeURIComponent(orderId)}`;
       const { error: paymentError, paymentIntent } = await stripe.confirmPayment({ elements, confirmParams: { return_url: returnUrl }, redirect: "if_required" });
       if (paymentError) throw paymentError;
-      if (paymentIntent?.status === "succeeded") navigate(`/order-confirmation?order=${encodeURIComponent(orderId)}`);
+      if (["succeeded", "processing", "requires_action"].includes(paymentIntent?.status)) {
+        navigate(`/order-confirmation?order=${encodeURIComponent(orderId)}`);
+      }
     } catch (paymentError) {
       onError(paymentError.message || "Payment could not be completed. Please try again.");
     } finally {

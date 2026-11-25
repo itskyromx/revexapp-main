@@ -28,7 +28,7 @@ export default function OrderConfirmation() {
       }
       if (data?.order) setOrder(data.order);
       if (data?.order?.status === "paid") setState("paid");
-      else if (attempts++ < 5) {
+      else if (attempts++ < 120) {
         setState("pending");
         timer = window.setTimeout(confirm, 2000);
       } else setState("pending");

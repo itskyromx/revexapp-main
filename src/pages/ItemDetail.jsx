@@ -166,8 +166,8 @@ export default function ItemDetail() {
     await supabase.from('offers').update({ status }).eq('id', offerId);
     setOffers((arr) => arr.map((o) => o.id === offerId ? { ...o, status } : o));
     if (status === "accepted") {
-      await supabase.from('items').update({ status: "reserved" }).eq('id', item.id);
-      setItem((it) => ({ ...it, status: "reserved" }));
+      await supabase.from('items').update({ status: "sold" }).eq('id', item.id);
+      setItem((it) => ({ ...it, status: "sold" }));
     }
   };
 

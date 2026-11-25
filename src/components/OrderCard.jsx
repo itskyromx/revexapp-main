@@ -49,13 +49,7 @@ export default function OrderCard({ order, role, busy, onPay, onConfirm, review,
 
       {children}
 
-      {role === "buyer" && order.status === "awaiting_payment" && (
-        <button onClick={onPay} disabled={busy} className="acid-btn bg-brand-red text-white w-full mt-3 text-xs disabled:opacity-50">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Complete payment
-        </button>
-      )}
-
-      {role === "buyer" && (order.status === "paid" || order.status === "in_transit") && (
+      {role === "buyer" && order.status === "in_transit" && (
         <button onClick={onConfirm} disabled={busy} className="acid-btn bg-brand-red text-white w-full mt-3 text-xs disabled:opacity-50">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />} Everything's OK — release payment
         </button>
